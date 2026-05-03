@@ -14,7 +14,6 @@ add_library(djm_core
    src/lexer/Lexer.cpp
    src/lexer/CharBasicLib.cpp
 
-   src/diagnostics/ErrorReporter.cpp
 )
 
 
