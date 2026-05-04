@@ -81,3 +81,16 @@ void assertToken(
    assert(token.location.line == expectedLine);
    assert(token.location.column == expectedColumn);
 }
+
+void assertNoInvalidTokens(const std::vector<Token>& tokens) {
+   for (const Token& token : tokens) {
+      if (token.type == TokenType::Invalid) {
+         std::cerr << "Unexpected invalid token: "
+                   << "\"" << token.lexeme << "\" at "
+                   << token.location.line << ":"
+                   << token.location.column << "\n";
+      }
+
+      assert(token.type != TokenType::Invalid);
+   }
+}

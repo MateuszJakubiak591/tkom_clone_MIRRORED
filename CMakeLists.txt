@@ -77,3 +77,21 @@ target_include_directories(lexer_file_tests PRIVATE
 add_test(NAME lexer_file_tests COMMAND lexer_file_tests)
 
 ########################################################################
+
+add_executable(lexer_user_class_test
+   tests/TestUtils.cpp
+   tests/lexer_user_class_test.cpp
+)
+
+target_link_libraries(lexer_user_class_test PRIVATE djm_core)
+
+target_include_directories(lexer_user_class_test PRIVATE
+   ${CMAKE_SOURCE_DIR}/include
+   ${CMAKE_SOURCE_DIR}/tests
+)
+
+add_test(
+   NAME lexer_user_class_test
+   COMMAND lexer_user_class_test
+   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)

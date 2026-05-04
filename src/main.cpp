@@ -36,15 +36,36 @@ int main(int argc, char** argv) {
 
       Lexer lexer(fileSource);
 
+      int i = 0;
+
       while (true) {
          Token token = lexer.nextToken();
 
          std::cout
-            << token.location.filename << ":"
-            << token.location.line << ":"
-            << token.location.column << "  "
-            << tokenTypeToString(token.type)
-            << "  \"" << token.lexeme << "\"\n";
+            << "assertToken(tokens["
+            << std::to_string(i)
+            << "], TokenType::"
+            << tokenTypeToString(token.type);
+
+         if(token.type == TokenType::StringLiteral){
+            std::string s = token.lexeme;
+            s.pop_back();
+            std::cout << ", \"\\" << s << "\\\"\"";   "\\n";
+         } else if(token.type == TokenType::Newline){
+            std::cout << ", \"\\\\n\"";
+         }
+         else {
+            std::cout << ", \"" << token.lexeme << "\"";
+         }
+
+         std::cout
+            << ", " << token.location.line
+            << ", " << token.location.column
+            << ");\n";
+
+         if (token.type == TokenType::Newline) {
+            std::cout << "\n";
+         }
 
          if (token.type == TokenType::EndOfFile) {
             break;
@@ -53,6 +74,8 @@ int main(int argc, char** argv) {
          if (token.type == TokenType::Invalid) {
             std::cerr << "Niepoprawny token: " << token.lexeme << "\n";
          }
+
+         i++;
       }
    } catch (const std::exception& e) {
       std::cerr << "Błąd: " << e.what() << "\n";

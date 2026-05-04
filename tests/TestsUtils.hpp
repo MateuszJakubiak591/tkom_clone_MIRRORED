@@ -21,3 +21,5 @@ void assertToken(
    int expectedLine,
    int expectedColumn
 );
+
+void assertNoInvalidTokens(const std::vector<Token>& tokens);
