@@ -16,6 +16,7 @@ Lexer::Lexer(CharSource& source)
    : source_(source) {}
 
 Token Lexer::nextToken() {
+   // Pomijanie białych znaków, komentarzy
    while (!source_.isAtEnd()) {
       char c = source_.peek();
 

@@ -1,3 +1,4 @@
+/*
 string s = ("Wieąloliniowy"
          +  "string")
 
@@ -6,3 +7,23 @@ char c = 'a'
 123_3.5__12
 
 map |> s abc
+
+123456.0
+
+abc
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+string s = "a" hihi
+string s = "ą" hihi
