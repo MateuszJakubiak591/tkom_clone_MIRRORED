@@ -58,16 +58,47 @@ static void testValidSimpleCharLiterals() {
    assertToken(tokens[25], TokenType::EndOfFile, "", 6, 1);
 }
 
-void runLexerCharTests(){
-   runTest("InvalidEmptyChar", testInvalidEmptyChar);
+static void testInvalidUnterminatedCharAtEndOfFile() {
+   const std::string code =
+      "char c = 'x";
+
+   const auto tokens = tokenizeString("invalid_unterminated_char_eof.djm", code);
+
+   assertToken(tokens[0], TokenType::KwChar, "char", 1, 1);
+   assertToken(tokens[1], TokenType::Identifier, "c", 1, 6);
+   assertToken(tokens[2], TokenType::Assign, "=", 1, 8);
+   assertToken(tokens[3], TokenType::Invalid, "'x", 1, 10);
 }
 
-void runLexerValidSimpleCharLiterals(){
-   runTest("ValidSimpleCharLiterals", testValidSimpleCharLiterals);
+static void testInvalidUnterminatedCharBeforeNewline() {
+   const std::string code =
+      "char c = '\n";
+
+   const auto tokens = tokenizeString("invalid_unterminated_char_newline.djm", code);
+
+   assertToken(tokens[0], TokenType::KwChar, "char", 1, 1);
+   assertToken(tokens[1], TokenType::Identifier, "c", 1, 6);
+   assertToken(tokens[2], TokenType::Assign, "=", 1, 8);
+   assertToken(tokens[3], TokenType::Invalid, "'", 1, 10);
+}
+
+static void testInvalidTooLongChar() {
+   const std::string code =
+      "char c = 'ab'\n";
+
+   const auto tokens = tokenizeString("invalid_too_long_char.djm", code);
+
+   assertToken(tokens[0], TokenType::KwChar, "char", 1, 1);
+   assertToken(tokens[1], TokenType::Identifier, "c", 1, 6);
+   assertToken(tokens[2], TokenType::Assign, "=", 1, 8);
+   assertToken(tokens[3], TokenType::Invalid, "'a", 1, 10);
 }
 
 int main(){
-   runLexerCharTests();
-   runLexerValidSimpleCharLiterals();
+   runTest("InvalidEmptyChar", testInvalidEmptyChar);
+   runTest("ValidSimpleCharLiterals", testValidSimpleCharLiterals);
+   runTest("InvalidUnterminatedCharAtEndOfFile", testInvalidUnterminatedCharAtEndOfFile);
+   runTest("InvalidUnterminatedCharBeforeNewline", testInvalidUnterminatedCharBeforeNewline);
+
    return 0;
 }
