@@ -22,21 +22,6 @@ Testing/
 *.out
 
 
-html/
-latex/
-Doxyfile.bak
-
-
 #.vscode/
 #!.vscode/tasks.json
 #!.vscode/launch.json
-
-
-.DS_Store
-Thumbs.db
-*~
-*.swp
-*.swo
-
-
-*.log
