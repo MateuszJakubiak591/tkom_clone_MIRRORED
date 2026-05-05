@@ -21,7 +21,8 @@ static void testValidSimpleCharLiterals() {
       "char b = '7'\n"
       "char c = '_'\n"
       "char d = ' '\n"
-      "char e = '!'\n";
+      "char e = '!'\n"
+      "char f = '\\'\n";
 
    const auto tokens = tokenizeString("valid_chars.djm", code);
 
@@ -55,7 +56,13 @@ static void testValidSimpleCharLiterals() {
    assertToken(tokens[23], TokenType::CharLiteral, "'!'", 5, 10);
    assertToken(tokens[24], TokenType::Newline, "\\n", 5, 13);
 
-   assertToken(tokens[25], TokenType::EndOfFile, "", 6, 1);
+   assertToken(tokens[25], TokenType::KwChar, "char", 6, 1);
+   assertToken(tokens[26], TokenType::Identifier, "f", 6, 6);
+   assertToken(tokens[27], TokenType::Assign, "=", 6, 8);
+   assertToken(tokens[28], TokenType::CharLiteral, "'\\'", 6, 10);
+   assertToken(tokens[29], TokenType::Newline, "\\n", 6, 13);
+
+   assertToken(tokens[30], TokenType::EndOfFile, "", 7, 1);
 }
 
 static void testInvalidUnterminatedCharAtEndOfFile() {
@@ -92,6 +99,11 @@ static void testInvalidTooLongChar() {
    assertToken(tokens[1], TokenType::Identifier, "c", 1, 6);
    assertToken(tokens[2], TokenType::Assign, "=", 1, 8);
    assertToken(tokens[3], TokenType::Invalid, "'a", 1, 10);
+   assertToken(tokens[4], TokenType::Identifier, "b", 1, 12);
+   assertToken(tokens[5], TokenType::Invalid, "'", 1, 13);
+   assertToken(tokens[6], TokenType::Newline, "\\n", 1, 14);
+
+   assertToken(tokens[7], TokenType::EndOfFile, "", 2, 1);
 }
 
 int main(){
