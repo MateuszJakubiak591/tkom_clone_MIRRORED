@@ -227,10 +227,14 @@ Token Lexer::nextToken() {
                text.push_back(source_.advance());
 
                if (lastWasUnderscore || !isDigit(source_.peek())) {
-                  char c = source_.advance();
-                  while(c == '_' || c == '.' || isDigit(c)){
-                     text.push_back(c);
-                     c = source_.advance();
+                  while(!source_.isAtEnd()){
+                     char c = source_.peek();
+
+                     if(c != '.' && c != '_' && !isDigit(c)){
+                        break;
+                     }
+
+                     text.push_back(source_.advance());
                   }
 
                   return false;
