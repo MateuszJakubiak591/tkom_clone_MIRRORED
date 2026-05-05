@@ -15,11 +15,59 @@ static void testInvalidEmptyChar() {
    assertToken(tokens[3], TokenType::Invalid, "'", 1, 10);
 }
 
+static void testValidSimpleCharLiterals() {
+   const std::string code =
+      "char a = 'x'\n"
+      "char b = '7'\n"
+      "char c = '_'\n"
+      "char d = ' '\n"
+      "char e = '!'\n";
+
+   const auto tokens = tokenizeString("valid_chars.djm", code);
+
+   assertToken(tokens[0], TokenType::KwChar, "char", 1, 1);
+   assertToken(tokens[1], TokenType::Identifier, "a", 1, 6);
+   assertToken(tokens[2], TokenType::Assign, "=", 1, 8);
+   assertToken(tokens[3], TokenType::CharLiteral, "'x'", 1, 10);
+   assertToken(tokens[4], TokenType::Newline, "\\n", 1, 13);
+
+   assertToken(tokens[5], TokenType::KwChar, "char", 2, 1);
+   assertToken(tokens[6], TokenType::Identifier, "b", 2, 6);
+   assertToken(tokens[7], TokenType::Assign, "=", 2, 8);
+   assertToken(tokens[8], TokenType::CharLiteral, "'7'", 2, 10);
+   assertToken(tokens[9], TokenType::Newline, "\\n", 2, 13);
+
+   assertToken(tokens[10], TokenType::KwChar, "char", 3, 1);
+   assertToken(tokens[11], TokenType::Identifier, "c", 3, 6);
+   assertToken(tokens[12], TokenType::Assign, "=", 3, 8);
+   assertToken(tokens[13], TokenType::CharLiteral, "'_'", 3, 10);
+   assertToken(tokens[14], TokenType::Newline, "\\n", 3, 13);
+
+   assertToken(tokens[15], TokenType::KwChar, "char", 4, 1);
+   assertToken(tokens[16], TokenType::Identifier, "d", 4, 6);
+   assertToken(tokens[17], TokenType::Assign, "=", 4, 8);
+   assertToken(tokens[18], TokenType::CharLiteral, "' '", 4, 10);
+   assertToken(tokens[19], TokenType::Newline, "\\n", 4, 13);
+
+   assertToken(tokens[20], TokenType::KwChar, "char", 5, 1);
+   assertToken(tokens[21], TokenType::Identifier, "e", 5, 6);
+   assertToken(tokens[22], TokenType::Assign, "=", 5, 8);
+   assertToken(tokens[23], TokenType::CharLiteral, "'!'", 5, 10);
+   assertToken(tokens[24], TokenType::Newline, "\\n", 5, 13);
+
+   assertToken(tokens[25], TokenType::EndOfFile, "", 6, 1);
+}
+
 void runLexerCharTests(){
    runTest("InvalidEmptyChar", testInvalidEmptyChar);
 }
 
+void runLexerValidSimpleCharLiterals(){
+   runTest("ValidSimpleCharLiterals", testValidSimpleCharLiterals);
+}
+
 int main(){
    runLexerCharTests();
+   runLexerValidSimpleCharLiterals();
    return 0;
 }
