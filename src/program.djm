@@ -1,2 +1,1 @@
-int a = 1__000
-int b = 123_
+string message = "hello world"
