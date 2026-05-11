@@ -41,7 +41,7 @@ static void testStringWithSpaces() {
 static void testInvalidUnterminatedString() {
    const std::string code =
       "string s = \"abc\n";
-
+   
    const auto tokens = tokenizeString("invalid_string.djm", code);
 
    assertToken(tokens[0], TokenType::KwString, "string", 1, 1);

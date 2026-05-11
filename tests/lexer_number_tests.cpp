@@ -82,7 +82,7 @@ static void testInvalidNumberLiterals() {
       "int a = 1__000\n"
       "int b = 123_\n"
       "float c = 1_.5\n"
-      "float d = 1.2__3\n";
+      "float d = 1.2__3\n"; 
 
    const auto tokens = tokenizeString("invalid_number_literals.djm", code);
 

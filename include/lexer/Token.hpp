@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
-#include "source/SourceLocation.hpp"
+#include <variant>
 
+#include "source/SourceLocation.hpp"
 
 enum class TokenType {
    EndOfFile,
@@ -41,7 +43,6 @@ enum class TokenType {
 
    KwImport,
    KwFrom,
-
    KwThis,
 
    OpAs,
@@ -49,62 +50,86 @@ enum class TokenType {
    OpCount,
    OpReverse,
    OpFlatten,
-   OpMap,         // |>
-   OpFilter,      // ?
-   OpGroup,       // %
+   OpMap,
+   OpFilter,
+   OpGroup,
 
-   Plus,          // +
-   Minus,         // -
-   Multiply,      // *
-   Divide,         // /
-   Power,         // ^
-   Not,           // !
+   Plus,
+   Minus,
+   Multiply,
+   Divide,
+   Power,
+   Not,
 
-   Equal,         // ==
-   NotEqual,      // !=
-   Less,          // <
-   LessEqual,     // <=
-   Greater,       // >
-   GreaterEqual,  // >=
+   Equal,
+   NotEqual,
+   Less,
+   LessEqual,
+   Greater,
+   GreaterEqual,
 
-   LogicAnd,      // &&
-   LogicOr,       // ||
+   LogicAnd,
+   LogicOr,
 
-   Assign,        // =
-   Arrow,         // ->
+   Assign,
+   Arrow,
 
-   LParen,        // (
-   RParen,        // )
-   LBracket,      // [
-   RBracket,      // ]
-   LBrace,        // {
-   RBrace,        // }
-   Comma,         // ,
-   Dot,           // .
-   Colon          // :
+   LParen,
+   RParen,
+   LBracket,
+   RBracket,
+   LBrace,
+   RBrace,
+   Comma,
+   Dot,
+   Colon
 };
 
-struct Token {
-   TokenType type;
-   std::string lexeme;
-   SourceLocation location;
+using TokenValue = std::variant<
+   std::monostate,
+   int64_t,
+   double,
+   bool,
+   char,
+   std::string
+>;
+
+class Token {
+public:
+   Token(
+      TokenType type,
+      std::string lexeme,
+      SourceLocation location,
+      TokenValue value = std::monostate{}
+   );
+
+   TokenType type() const;
+   const std::string& lexeme() const;
+   const SourceLocation& location() const;
+   const TokenValue& value() const;
+
+   bool hasValue() const;
+
+private:
+   TokenType type_;
+   std::string lexeme_;
+   SourceLocation location_;
+   TokenValue value_;
+
+   static bool isConsistent(TokenType type, const std::string& lexeme, const TokenValue& value);
 };
 
-std::string tokenTypeToString(TokenType type);
 
-Token makeToken(TokenType type, const std::string& lexeme, 
-                              const SourceLocation& location);
 
-Token makeInvalidToken(const std::string& lexeme,
-                     const SourceLocation& location);
+Token makeToken(TokenType type, const std::string& lexeme, const SourceLocation& location);
+Token makeInvalidToken(const std::string& lexeme, const SourceLocation& location);
+
+Token makeIntToken(const std::string& lexeme, SourceLocation location, int64_t value);
+Token makeFloatToken(const std::string& lexeme, SourceLocation location, double value);
+Token makeBoolToken(const std::string& lexeme, SourceLocation location, bool value);
+Token makeCharToken(const std::string& lexeme, SourceLocation location, char value);
+Token makeStringToken(const std::string& lexeme, SourceLocation location, std::string value);
 
 TokenType keywordType(const std::string& text);
 
-// Przyjęto taką definicję dla celów testowych
-// Faktycznie należałoby pewnie porównać
-// jedynie type i lexeme
-inline bool operator==(const Token& lhs, const Token& rhs) {
-   return lhs.type == rhs.type
-       && lhs.lexeme == rhs.lexeme
-       && lhs.location == rhs.location;
-}
+std::string tokenTypeToString(TokenType type);

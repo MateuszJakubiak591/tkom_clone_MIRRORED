@@ -1,5 +1,148 @@
 #include "lexer/Token.hpp"
 #include <unordered_map>
+#include <stdexcept>
+
+Token::Token(
+   TokenType type,
+   std::string lexeme,
+   SourceLocation location,
+   TokenValue value
+)
+   : type_(type),
+     lexeme_(std::move(lexeme)),
+     location_(location),
+     value_(std::move(value)) {
+   if (!isConsistent(type_, lexeme_, value_)) {
+      throw std::invalid_argument(
+         "Inconsistent token: type " + tokenTypeToString(type_) +
+         " with lexeme '" + lexeme_ + "'"
+      );
+   }
+}
+
+TokenType Token::type() const {
+   return type_;
+}
+
+const std::string& Token::lexeme() const {
+   return lexeme_;
+}
+
+const SourceLocation& Token::location() const {
+   return location_;
+}
+
+const TokenValue& Token::value() const {
+   return value_;
+}
+
+bool Token::hasValue() const {
+   return !std::holds_alternative<std::monostate>(value_);
+}
+
+bool Token::isConsistent(
+   TokenType type,
+   const std::string& lexeme,
+   const TokenValue& value
+) {
+   switch (type) {
+      case TokenType::IntLiteral:
+         return std::holds_alternative<int64_t>(value);
+
+      case TokenType::FloatLiteral:
+         return std::holds_alternative<double>(value);
+
+      case TokenType::BoolLiteral:
+         return std::holds_alternative<bool>(value) &&
+                (lexeme == "true" || lexeme == "false");
+
+      case TokenType::CharLiteral:
+         return std::holds_alternative<char>(value);
+
+      case TokenType::StringLiteral:
+         return std::holds_alternative<std::string>(value);
+
+      case TokenType::Invalid:
+         return true;
+
+      default:
+         return std::holds_alternative<std::monostate>(value);
+   }
+}
+
+Token makeToken(TokenType type, const std::string& lexeme, const SourceLocation& location) {
+   return Token(type, lexeme, location);
+}
+
+Token makeInvalidToken(const std::string& lexeme, const SourceLocation& location) {
+   return Token(TokenType::Invalid, lexeme, location);
+}
+
+Token makeIntToken(const std::string& lexeme, SourceLocation location, int64_t value) {
+   return Token(TokenType::IntLiteral, lexeme, location, value);
+}
+
+Token makeFloatToken(const std::string& lexeme, SourceLocation location, double value) {
+   return Token(TokenType::FloatLiteral, lexeme, location, value);
+}
+
+Token makeBoolToken(const std::string& lexeme, SourceLocation location, bool value) {
+   return Token(TokenType::BoolLiteral, lexeme, location, value);
+}
+
+Token makeCharToken(const std::string& lexeme, SourceLocation location, char value) {
+   return Token(TokenType::CharLiteral, lexeme, location, value);
+}
+
+Token makeStringToken(const std::string& lexeme, SourceLocation location, std::string value) {
+   return Token(TokenType::StringLiteral, lexeme, location, std::move(value));
+}
+
+TokenType keywordType(const std::string& text) {
+   static const std::unordered_map<std::string, TokenType> keywords = {
+      {"int", TokenType::KwInt},
+      {"uint", TokenType::KwUint},
+      {"float", TokenType::KwFloat},
+      {"bool", TokenType::KwBool},
+      {"char", TokenType::KwChar},
+      {"string", TokenType::KwString},
+      {"list", TokenType::KwList},
+      {"void", TokenType::KwVoid},
+
+      {"class", TokenType::KwClass},
+      {"fun", TokenType::KwFun},
+      {"return", TokenType::KwReturn},
+      {"mut", TokenType::KwMut},
+      {"private", TokenType::KwPrivate},
+      {"static", TokenType::KwStatic},
+
+      {"if", TokenType::KwIf},
+      {"else", TokenType::KwElse},
+      {"while", TokenType::KwWhile},
+      {"for", TokenType::KwFor},
+      {"in", TokenType::KwIn},
+
+      {"import", TokenType::KwImport},
+      {"from", TokenType::KwFrom},
+      {"this", TokenType::KwThis},
+
+      {"true", TokenType::BoolLiteral},
+      {"false", TokenType::BoolLiteral},
+
+      {"as", TokenType::OpAs},
+      {"contains", TokenType::OpContains},
+      {"count", TokenType::OpCount},
+      {"reverse", TokenType::OpReverse},
+      {"flatten", TokenType::OpFlatten}
+   };
+
+   auto it = keywords.find(text);
+   if (it != keywords.end()) {
+      return it->second;
+   }
+
+   return TokenType::Identifier;
+}
 
 std::string tokenTypeToString(TokenType type) {
    switch (type) {
@@ -82,58 +225,4 @@ std::string tokenTypeToString(TokenType type) {
    }
 
    return "Unknown";
-}
-
-Token makeToken(TokenType type, const std::string& lexeme, const SourceLocation& location) {
-   return Token{type, lexeme, location};
-}
-
-Token makeInvalidToken(const std::string& lexeme, const SourceLocation& location) {
-   return Token{TokenType::Invalid, lexeme, location};
-}
-
-TokenType keywordType(const std::string& text) {
-   static const std::unordered_map<std::string, TokenType> keywords = {
-      {"int", TokenType::KwInt},
-      {"uint", TokenType::KwUint},
-      {"float", TokenType::KwFloat},
-      {"bool", TokenType::KwBool},
-      {"char", TokenType::KwChar},
-      {"string", TokenType::KwString},
-      {"list", TokenType::KwList},
-      {"void", TokenType::KwVoid},
-
-      {"class", TokenType::KwClass},
-      {"fun", TokenType::KwFun},
-      {"return", TokenType::KwReturn},
-      {"mut", TokenType::KwMut},
-      {"private", TokenType::KwPrivate},
-      {"static", TokenType::KwStatic},
-
-      {"if", TokenType::KwIf},
-      {"else", TokenType::KwElse},
-      {"while", TokenType::KwWhile},
-      {"for", TokenType::KwFor},
-      {"in", TokenType::KwIn},
-
-      {"import", TokenType::KwImport},
-      {"from", TokenType::KwFrom},
-      {"this", TokenType::KwThis},
-
-      {"true", TokenType::BoolLiteral},
-      {"false", TokenType::BoolLiteral},
-
-      {"as", TokenType::OpAs},
-      {"contains", TokenType::OpContains},
-      {"count", TokenType::OpCount},
-      {"reverse", TokenType::OpReverse},
-      {"flatten", TokenType::OpFlatten}
-   };
-
-   auto it = keywords.find(text);
-   if (it != keywords.end()) {
-      return it->second;
-   }
-
-   return TokenType::Identifier;
 }

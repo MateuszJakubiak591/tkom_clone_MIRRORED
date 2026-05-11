@@ -45,34 +45,34 @@ int main(int argc, char** argv) {
             << "assertToken(tokens["
             << std::to_string(i)
             << "], TokenType::"
-            << tokenTypeToString(token.type);
+            << tokenTypeToString(token.type());
 
-         if(token.type == TokenType::StringLiteral){
-            std::string s = token.lexeme;
+         if(token.type() == TokenType::StringLiteral){
+            std::string s = token.lexeme();
             s.pop_back();
             std::cout << ", \"\\" << s << "\\\"\"";   "\\n";
-         } else if(token.type == TokenType::Newline){
+         } else if(token.type() == TokenType::Newline){
             std::cout << ", \"\\\\n\"";
          }
          else {
-            std::cout << ", \"" << token.lexeme << "\"";
+            std::cout << ", \"" << token.lexeme() << "\"";
          }
 
          std::cout
-            << ", " << token.location.line
-            << ", " << token.location.column
+            << ", " << token.location().line
+            << ", " << token.location().column
             << ");\n";
 
-         if (token.type == TokenType::Newline) {
+         if (token.type() == TokenType::Newline) {
             std::cout << "\n";
          }
 
-         if (token.type == TokenType::EndOfFile) {
+         if (token.type() == TokenType::EndOfFile) {
             break;
          }
 
-         if (token.type == TokenType::Invalid) {
-            std::cerr << "Niepoprawny token: " << token.lexeme << "\n";
+         if (token.type() == TokenType::Invalid) {
+            std::cerr << "Niepoprawny token: " << token.lexeme() << "\n";
          }
 
          i++;

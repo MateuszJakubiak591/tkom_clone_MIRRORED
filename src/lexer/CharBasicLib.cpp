@@ -1,4 +1,5 @@
 #include "lexer/CharBasicLib.hpp"
+#include <cctype>
 
 
 bool isAlpha(char c) {

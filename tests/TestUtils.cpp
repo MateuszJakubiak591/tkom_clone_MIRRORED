@@ -26,7 +26,7 @@ std::vector<Token> tokenizeString(
       Token token = lexer.nextToken();
       tokens.push_back(token);
 
-      if (token.type == TokenType::EndOfFile) {
+      if (token.type() == TokenType::EndOfFile) {
          break;
       }
    }
@@ -44,7 +44,7 @@ std::vector<Token> tokenizeFile(const std::string& filename) {
       Token token = lexer.nextToken();
       tokens.push_back(token);
 
-      if (token.type == TokenType::EndOfFile) {
+      if (token.type() == TokenType::EndOfFile) {
          break;
       }
    }
@@ -59,10 +59,10 @@ void assertToken(
    int expectedLine,
    int expectedColumn
 ) {
-   if (token.type != expectedType ||
-       token.lexeme != expectedLexeme ||
-       token.location.line != expectedLine ||
-       token.location.column != expectedColumn) {
+   if (token.type() != expectedType ||
+       token.lexeme() != expectedLexeme ||
+       token.location().line != expectedLine ||
+       token.location().column != expectedColumn) {
 
       std::cerr << "Expected: "
                 << tokenTypeToString(expectedType)
@@ -70,27 +70,27 @@ void assertToken(
                 << expectedLine << ":" << expectedColumn << "\n";
 
       std::cerr << "Actual:   "
-                << tokenTypeToString(token.type)
-                << " \"" << token.lexeme << "\" at "
-                << token.location.line << ":"
-                << token.location.column << "\n";
+                << tokenTypeToString(token.type())
+                << " \"" << token.lexeme() << "\" at "
+                << token.location().line << ":"
+                << token.location().column << "\n";
    }
 
-   assert(token.type == expectedType);
-   assert(token.lexeme == expectedLexeme);
-   assert(token.location.line == expectedLine);
-   assert(token.location.column == expectedColumn);
+   assert(token.type() == expectedType);
+   assert(token.lexeme() == expectedLexeme);
+   assert(token.location().line == expectedLine);
+   assert(token.location().column == expectedColumn);
 }
 
 void assertNoInvalidTokens(const std::vector<Token>& tokens) {
    for (const Token& token : tokens) {
-      if (token.type == TokenType::Invalid) {
+      if (token.type() == TokenType::Invalid) {
          std::cerr << "Unexpected invalid token: "
-                   << "\"" << token.lexeme << "\" at "
-                   << token.location.line << ":"
-                   << token.location.column << "\n";
+                   << "\"" << token.lexeme() << "\" at "
+                   << token.location().line << ":"
+                   << token.location().column << "\n";
       }
 
-      assert(token.type != TokenType::Invalid);
+      assert(token.type() != TokenType::Invalid);
    }
 }
