@@ -2,6 +2,7 @@
 #include "source/FileSource.hpp"
 #include "lexer/Lexer.hpp"
 #include "lexer/Token.hpp"
+#include "source/SourceLocation.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -26,6 +27,9 @@ int main(int argc, char** argv) {
       std::cerr << "Użycie: " << argv[0] << " <plik.djm>\n";
       return 1;
    }
+
+   //SourceLocation sc = SourceLocation{"file1.djm", 5, 10};
+   //makeBoolToken("true1", sc, true);
 
    const std::string path = argv[1];
 

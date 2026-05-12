@@ -1,3 +1,4 @@
+#include <gtest/gtest.h>
 #include "TestsUtils.hpp"
 
 #include "lexer/Token.hpp"
@@ -5,7 +6,7 @@
 #include <fstream>
 #include <string>
 
-static void testFileSourceSimpleDeclaration() {
+TEST(FileSource, FileSourceSimpleDeclaration) {
    const std::string filename = "lexer_file_source_test.djm";
 
    {
@@ -60,14 +61,4 @@ static void testFileSourceWithFunction() {
    assertToken(tokens[20], TokenType::RBrace, "}", 3, 1);
    assertToken(tokens[21], TokenType::Newline, "\\n", 3, 2);
    assertToken(tokens[22], TokenType::EndOfFile, "", 4, 1);
-}
-
-void runLexerFileTests() {
-   runTest("FileSourceSimpleDeclaration", testFileSourceSimpleDeclaration);
-   runTest("FileSourceWithFunction", testFileSourceWithFunction);
-}
-
-int main() {
-   runLexerFileTests();
-   return 0;
 }

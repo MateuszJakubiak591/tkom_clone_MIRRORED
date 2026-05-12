@@ -1,3 +1,4 @@
+#include <gtest/gtest.h>
 #include "TestsUtils.hpp"
 
 #include "lexer/Token.hpp"
@@ -5,7 +6,7 @@
 #include <iostream>
 #include <string>
 
-static void testIntegerLiterals() {
+TEST(LexerNumbers, IntegerLiterals) {
    const std::string code =
       "int a = 0\n"
       "int b = 123\n"
@@ -24,6 +25,7 @@ static void testIntegerLiterals() {
    assertToken(tokens[6], TokenType::Identifier, "b", 2, 5);
    assertToken(tokens[7], TokenType::Assign, "=", 2, 7);
    assertToken(tokens[8], TokenType::IntLiteral, "123", 2, 9);
+   EXPECT_EQ(std::get<int64_t>(tokens[8].value()), 123);
    assertToken(tokens[9], TokenType::Newline, "\\n", 2, 12);
 
    assertToken(tokens[10], TokenType::KwInt, "int", 3, 1);
@@ -36,12 +38,13 @@ static void testIntegerLiterals() {
    assertToken(tokens[16], TokenType::Identifier, "d", 4, 5);
    assertToken(tokens[17], TokenType::Assign, "=", 4, 7);
    assertToken(tokens[18], TokenType::IntLiteral, "2_147_483_647", 4, 9);
+   EXPECT_EQ(std::get<int64_t>(tokens[18].value()), 2147483647);
    assertToken(tokens[19], TokenType::Newline, "\\n", 4, 22);
 
    assertToken(tokens[20], TokenType::EndOfFile, "", 5, 1);
 }
 
-static void testFloatLiterals() {
+TEST(LexerNumbers, FloatLiterals) {
    const std::string code =
       "float a = 0.0\n"
       "float b = 123.456\n"
@@ -60,6 +63,7 @@ static void testFloatLiterals() {
    assertToken(tokens[6], TokenType::Identifier, "b", 2, 7);
    assertToken(tokens[7], TokenType::Assign, "=", 2, 9);
    assertToken(tokens[8], TokenType::FloatLiteral, "123.456", 2, 11);
+   EXPECT_EQ(std::get<double>(tokens[8].value()), 123.456);
    assertToken(tokens[9], TokenType::Newline, "\\n", 2, 18);
 
    assertToken(tokens[10], TokenType::KwFloat, "float", 3, 1);
@@ -77,7 +81,7 @@ static void testFloatLiterals() {
    assertToken(tokens[20], TokenType::EndOfFile, "", 5, 1);
 }
 
-static void testInvalidNumberLiterals() {
+TEST(LexerNumbers, InvalidNumberLiterals) {
    const std::string code =
       "int a = 1__000\n"
       "int b = 123_\n"
@@ -111,13 +115,4 @@ static void testInvalidNumberLiterals() {
    assertToken(tokens[19], TokenType::Newline, "\\n", 4, 17);
 
    assertToken(tokens[20], TokenType::EndOfFile, "", 5, 1);
-}
-
-int main() {
-   runTest("IntegerLiterals", testIntegerLiterals);
-   runTest("FloatLiterals", testFloatLiterals);
-   runTest("InvalidNumberLiterals", testInvalidNumberLiterals);
-
-   std::cout << "All number lexer tests passed.\n";
-   return 0;
 }

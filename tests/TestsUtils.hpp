@@ -4,8 +4,8 @@
 
 #include <string>
 #include <vector>
+#include <typeinfo>
 
-void runTest(const std::string& name, void (*testFunction)());
 
 std::vector<Token> tokenizeString(
    const std::string& filename,
@@ -20,6 +20,13 @@ void assertToken(
    const std::string& expectedLexeme,
    int expectedLine,
    int expectedColumn
+);
+
+void assertToken(
+   const Token& token,
+   TokenType expectedType,
+   const std::string& expectedLexeme,
+   const TokenValue& expectedValue = std::monostate{} // Domyślnie brak wartości
 );
 
 void assertNoInvalidTokens(const std::vector<Token>& tokens);

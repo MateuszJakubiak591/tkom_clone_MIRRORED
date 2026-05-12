@@ -98,8 +98,11 @@ Token makeStringToken(const std::string& lexeme, SourceLocation location, std::s
    return Token(TokenType::StringLiteral, lexeme, location, std::move(value));
 }
 
+#include <string_view>
+#include <iterator>
+
 TokenType keywordType(const std::string& text) {
-   static const std::unordered_map<std::string, TokenType> keywords = {
+   static constexpr std::pair<std::string_view, TokenType> keywords[] = {
       {"int", TokenType::KwInt},
       {"uint", TokenType::KwUint},
       {"float", TokenType::KwFloat},
@@ -136,9 +139,10 @@ TokenType keywordType(const std::string& text) {
       {"flatten", TokenType::OpFlatten}
    };
 
-   auto it = keywords.find(text);
-   if (it != keywords.end()) {
-      return it->second;
+   for (const auto& [kw, type] : keywords) {
+      if (kw == text) {
+         return type;
+      }
    }
 
    return TokenType::Identifier;

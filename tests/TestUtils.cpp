@@ -4,7 +4,7 @@
 #include "source/StringSource.hpp"
 #include "source/FileSource.hpp"
 
-#include <cassert>
+#include <gtest/gtest.h>
 #include <iostream>
 
 void runTest(const std::string& name, void (*testFunction)()) {
@@ -76,10 +76,23 @@ void assertToken(
                 << token.location().column << "\n";
    }
 
-   assert(token.type() == expectedType);
-   assert(token.lexeme() == expectedLexeme);
-   assert(token.location().line == expectedLine);
-   assert(token.location().column == expectedColumn);
+   EXPECT_EQ(token.type(), expectedType);
+   EXPECT_EQ(token.lexeme(), expectedLexeme);
+   EXPECT_EQ(token.location().line, expectedLine);
+   EXPECT_EQ(token.location().column, expectedColumn);
+}
+
+void assertToken(
+   const Token& token,
+   TokenType expectedType,
+   const std::string& expectedLexeme,
+   const TokenValue& expectedValue
+) {
+   EXPECT_EQ(token.type(), expectedType);
+   EXPECT_EQ(token.lexeme(), expectedLexeme);
+   
+
+   EXPECT_EQ(token.value(), expectedValue);
 }
 
 void assertNoInvalidTokens(const std::vector<Token>& tokens) {

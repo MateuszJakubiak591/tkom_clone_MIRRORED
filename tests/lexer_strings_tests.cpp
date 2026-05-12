@@ -1,8 +1,10 @@
+#include <gtest/gtest.h>
 #include "TestsUtils.hpp"
+
 #include "lexer/Token.hpp"
 #include <string>
 
-static void testStringsAndChars() {
+TEST(LexerStrings, StringsAndChars) {
    const std::string code =
       "string s = \"abc\"\n"
       "char c = 'x'\n";
@@ -24,7 +26,7 @@ static void testStringsAndChars() {
    assertToken(tokens[10], TokenType::EndOfFile, "", 3, 1);
 }
 
-static void testStringWithSpaces() {
+TEST(LexerStrings, StringsWithSpaces) {
    const std::string code =
       "string message = \"hello world\"\n";
 
@@ -38,7 +40,7 @@ static void testStringWithSpaces() {
    assertToken(tokens[5], TokenType::EndOfFile, "", 2, 1);
 }
 
-static void testInvalidUnterminatedString() {
+TEST(LexerStrings, InvalidUntermiantedStrings)  {
    const std::string code =
       "string s = \"abc\n";
    
@@ -50,15 +52,22 @@ static void testInvalidUnterminatedString() {
 
 
    assertToken(tokens[3], TokenType::Invalid, "\"abc", 1, 12);
+   EXPECT_EQ(tokens[2].hasValue(), false);
 }
 
-void runLexerStringTests() {
-   runTest("StringsAndChars", testStringsAndChars);
-   runTest("StringWithSpaces", testStringWithSpaces);
-   runTest("InvalidUnterminatedString", testInvalidUnterminatedString);
-}
+TEST(LexerStrings, StringWithEscapes) {
+   const std::string code =
+      "string s = \"line1\\nline2 \\\"quote\\\"\"\n";
 
-int main() {
-   runLexerStringTests();
-   return 0;
+   const auto tokens = tokenizeString("string_escapes.djm", code);
+
+   assertToken(tokens[0], TokenType::KwString, "string", 1, 1);
+   assertToken(tokens[1], TokenType::Identifier, "s", 1, 8);
+   assertToken(tokens[2], TokenType::Assign, "=", 1, 10);
+
+   assertToken(tokens[3], TokenType::StringLiteral, "\"line1\\nline2 \\\"quote\\\"\"", 1, 12);
+
+   assertToken(tokens[4], TokenType::Newline, "\\n", 1, 36);
+   
+   assertToken(tokens[5], TokenType::EndOfFile, "", 2, 1);
 }

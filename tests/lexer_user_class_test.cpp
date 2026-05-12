@@ -1,3 +1,4 @@
+#include <gtest/gtest.h>
 #include "TestsUtils.hpp"
 
 #include "lexer/Token.hpp"
@@ -7,7 +8,7 @@
 #include <string>
 #include <vector>
 
-static void testUserClassFileTokenization() {
+TEST(UserClass, UserClassTokenization) {
    const auto tokens = tokenizeFile("tests/lexer_user_class_test.djm");
 
    assertToken(tokens[0], TokenType::KwClass, "class", 1, 1);
@@ -355,11 +356,4 @@ static void testUserClassFileTokenization() {
    assertToken(tokens[294], TokenType::StringLiteral, "\"Polska\"", 49, 34);
    assertToken(tokens[295], TokenType::RParen, ")", 49, 42);
    assertToken(tokens[296], TokenType::EndOfFile, "", 49, 43);
-}
-
-int main() {
-   runTest("UserClassFileTokenization", testUserClassFileTokenization);
-
-   std::cout << "All user class lexer tests passed.\n";
-   return 0;
 }

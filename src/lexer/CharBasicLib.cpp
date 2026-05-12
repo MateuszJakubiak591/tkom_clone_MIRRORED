@@ -10,6 +10,10 @@ bool isDigit(char c) {
    return c >= '0' && c <= '9';
 }
 
+bool isAlphaNumeric(char c) {
+   return isAlpha(c) || isDigit(c);
+}
+
 bool isAlphaNumericOrUnderscore(char c) {
    return isAlpha(c) || isDigit(c) || c == '_';
 }

@@ -1,10 +1,10 @@
+#include <gtest/gtest.h>
 #include "TestsUtils.hpp"
 
 #include "lexer/Token.hpp"
-
 #include <string>
 
-static void testKeywordsAndTypes() {
+TEST(LexerKeywords, KeywordsAndTypes) {
    const std::string code =
       "class User {\n"
       "fun main(args: list<string>) -> int {\n"
@@ -47,7 +47,7 @@ static void testKeywordsAndTypes() {
    assertToken(tokens[25], TokenType::EndOfFile, "", 6, 1);
 }
 
-static void testAllSimpleKeywords() {
+TEST(LexerKeywords, AllSimpleKeywords) {
    const std::string code =
       "int uint float bool char string list void\n"
       "class fun return mut private static\n"
@@ -95,14 +95,4 @@ static void testAllSimpleKeywords() {
    assertToken(tokens[31], TokenType::Newline, "\\n", 5, 34);
 
    assertToken(tokens[32], TokenType::EndOfFile, "", 6, 1);
-}
-
-void runLexerKeywordTests() {
-   runTest("KeywordsAndTypes", testKeywordsAndTypes);
-   runTest("AllSimpleKeywords", testAllSimpleKeywords);
-}
-
-int main() {
-   runLexerKeywordTests();
-   return 0;
 }

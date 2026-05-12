@@ -1,9 +1,11 @@
+#include <gtest/gtest.h>
 #include "TestsUtils.hpp"
+
 #include "lexer/Token.hpp"
 #include <string>
 
 
-static void testInvalidEmptyChar() {
+TEST(LexerChars, StringsAndChars)  {
    const std::string code =
       "char c = ''\n";
 
@@ -12,7 +14,7 @@ static void testInvalidEmptyChar() {
    assertToken(tokens[0], TokenType::KwChar, "char", 1, 1);
    assertToken(tokens[1], TokenType::Identifier, "c", 1, 6);
    assertToken(tokens[2], TokenType::Assign, "=", 1, 8);
-   assertToken(tokens[3], TokenType::Invalid, "'", 1, 10);
+   assertToken(tokens[3], TokenType::Invalid, "''", 1, 10);
 }
 
 static void testValidSimpleCharLiterals() {
@@ -104,13 +106,4 @@ static void testInvalidTooLongChar() {
    assertToken(tokens[6], TokenType::Newline, "\\n", 1, 14);
 
    assertToken(tokens[7], TokenType::EndOfFile, "", 2, 1);
-}
-
-int main(){
-   runTest("InvalidEmptyChar", testInvalidEmptyChar);
-   runTest("ValidSimpleCharLiterals", testValidSimpleCharLiterals);
-   runTest("InvalidUnterminatedCharAtEndOfFile", testInvalidUnterminatedCharAtEndOfFile);
-   runTest("InvalidUnterminatedCharBeforeNewline", testInvalidUnterminatedCharBeforeNewline);
-
-   return 0;
 }

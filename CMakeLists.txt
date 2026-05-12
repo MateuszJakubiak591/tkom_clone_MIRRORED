@@ -28,102 +28,56 @@ target_link_libraries(djm PRIVATE djm_core)
 
 ########################################################################
 
-enable_testing()
-
-add_executable(lexer_keywords_tests
-   tests/TestUtils.cpp
-   tests/lexer_keywords_tests.cpp
+include(FetchContent) 
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG release-1.12.1
 )
+FetchContent_MakeAvailable(googletest) 
 
-target_link_libraries(lexer_keywords_tests PRIVATE djm_core)
+enable_testing() 
+include(GoogleTest) 
 
-target_include_directories(lexer_keywords_tests PRIVATE
-   ${CMAKE_SOURCE_DIR}/include
-   ${CMAKE_SOURCE_DIR}/tests
-)
-
-add_test(NAME lexer_keywords_tests COMMAND lexer_keywords_tests)
-
-########################################################################
-
-add_executable(lexer_strings_tests
-   tests/TestUtils.cpp
-   tests/lexer_strings_tests.cpp
-)
-
-target_link_libraries(lexer_strings_tests PRIVATE djm_core)
-
-target_include_directories(lexer_strings_tests PRIVATE
-   ${CMAKE_SOURCE_DIR}/include
-   ${CMAKE_SOURCE_DIR}/tests
-)
-
-add_test(NAME lexer_strings_tests COMMAND lexer_strings_tests)
-
-########################################################################
-
-add_executable(lexer_file_tests
-   tests/TestUtils.cpp
-   tests/lexer_file_tests.cpp
-)
-
-target_link_libraries(lexer_file_tests PRIVATE djm_core)
-
-target_include_directories(lexer_file_tests PRIVATE
-   ${CMAKE_SOURCE_DIR}/include
-   ${CMAKE_SOURCE_DIR}/tests
-)
-
-add_test(NAME lexer_file_tests COMMAND lexer_file_tests)
-
-########################################################################
-
-add_executable(lexer_user_class_test
-   tests/TestUtils.cpp
-   tests/lexer_user_class_test.cpp
-)
-
-target_link_libraries(lexer_user_class_test PRIVATE djm_core)
-
-target_include_directories(lexer_user_class_test PRIVATE
-   ${CMAKE_SOURCE_DIR}/include
-   ${CMAKE_SOURCE_DIR}/tests
-)
-
-add_test(
-   NAME lexer_user_class_test
-   COMMAND lexer_user_class_test
-   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+# Pomocnicza zmienna z nagłówkami dla testów
+set(TEST_INCLUDES 
+    ${CMAKE_SOURCE_DIR}/include 
+    ${CMAKE_SOURCE_DIR}/tests
 )
 
 ########################################################################
 
-add_executable(lexer_number_tests
-   tests/TestUtils.cpp
-   tests/lexer_number_tests.cpp
-)
+add_executable(lexer_keywords_tests tests/TestUtils.cpp tests/lexer_keywords_tests.cpp) 
+target_link_libraries(lexer_keywords_tests PRIVATE djm_core gtest_main) 
+target_include_directories(lexer_keywords_tests PRIVATE ${TEST_INCLUDES}) 
+gtest_discover_tests(lexer_keywords_tests) 
 
-target_link_libraries(lexer_number_tests PRIVATE djm_core)
+add_executable(lexer_strings_tests tests/TestUtils.cpp tests/lexer_strings_tests.cpp) 
+target_link_libraries(lexer_strings_tests PRIVATE djm_core gtest_main) 
+target_include_directories(lexer_strings_tests PRIVATE ${TEST_INCLUDES}) 
+gtest_discover_tests(lexer_strings_tests) 
 
-target_include_directories(lexer_number_tests PRIVATE
-   ${CMAKE_SOURCE_DIR}/include
-   ${CMAKE_SOURCE_DIR}/tests
-)
+add_executable(lexer_number_tests tests/TestUtils.cpp tests/lexer_number_tests.cpp) 
+target_link_libraries(lexer_number_tests PRIVATE djm_core gtest_main) 
+target_include_directories(lexer_number_tests PRIVATE ${TEST_INCLUDES}) 
+gtest_discover_tests(lexer_number_tests) 
 
-add_test(NAME lexer_number_tests COMMAND lexer_number_tests)
+add_executable(lexer_file_tests tests/TestUtils.cpp tests/lexer_file_tests.cpp) 
+target_link_libraries(lexer_file_tests PRIVATE djm_core gtest_main) 
+target_include_directories(lexer_file_tests PRIVATE ${TEST_INCLUDES}) 
+gtest_discover_tests(lexer_file_tests) 
 
-########################################################################
+add_executable(lexer_user_class_test tests/TestUtils.cpp tests/lexer_user_class_test.cpp) 
+target_link_libraries(lexer_user_class_test PRIVATE djm_core gtest_main) 
+target_include_directories(lexer_user_class_test PRIVATE ${TEST_INCLUDES}) 
+gtest_discover_tests(lexer_user_class_test WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-add_executable(lexer_char_tests
-   tests/TestUtils.cpp
-   tests/lexer_char_tests.cpp
-)
+add_executable(lexer_char_tests tests/TestUtils.cpp tests/lexer_char_tests.cpp) 
+target_link_libraries(lexer_char_tests PRIVATE djm_core gtest_main) 
+target_include_directories(lexer_char_tests PRIVATE ${TEST_INCLUDES}) 
+gtest_discover_tests(lexer_char_tests) 
 
-target_link_libraries(lexer_char_tests PRIVATE djm_core)
-
-target_include_directories(lexer_char_tests PRIVATE
-   ${CMAKE_SOURCE_DIR}/include
-   ${CMAKE_SOURCE_DIR}/tests
-)
-
-add_test(NAME lexer_char_tests COMMAND lexer_char_tests)
+add_executable(token_consistency_tests tests/TestUtils.cpp tests/token_consistency_tests.cpp) 
+target_link_libraries(token_consistency_tests PRIVATE djm_core gtest_main) 
+target_include_directories(token_consistency_tests PRIVATE ${TEST_INCLUDES}) 
+gtest_discover_tests(token_consistency_tests) 

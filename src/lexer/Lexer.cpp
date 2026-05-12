@@ -25,28 +25,64 @@ std::string removeUnderscores(const std::string& text) {
 
 int64_t parseIntLiteral(const std::string& text) {
    std::string normalized = removeUnderscores(text);
+   
+   int64_t result = 0;
+   bool negative = false;
+   size_t start = 0;
 
-   std::size_t processedCharacters = 0;
-   long long value = std::stoll(normalized, &processedCharacters);
-
-   if (processedCharacters != normalized.size()) {
-      throw std::invalid_argument("invalid integer literal");
+   if (!normalized.empty() && normalized[0] == '-') {
+      negative = true;
+      start = 1;
    }
 
-   return static_cast<int64_t>(value);
+   for (size_t i = start; i < normalized.size(); ++i) {
+      if (normalized[i] < '0' || normalized[i] > '9') {
+         throw std::invalid_argument("Niedozwolony znak w liczbie");
+      }
+
+      int digit = normalized[i] - '0';
+
+      //if (result * 10 + digit > INT64_MAX)
+      //if (result * 10 > INT64_MAX - digit)
+      //if (result > (INT64_MAX - digit) / 10)
+      if (result > (INT64_MAX - digit) / 10) {
+         throw std::out_of_range("Liczba wykracza poza zakres int64");
+      }
+
+      result = result * 10 + digit;
+   }
+
+   return negative ? -result : result;
 }
 
 double parseFloatLiteral(const std::string& text) {
    std::string normalized = removeUnderscores(text);
+   
+   double result = 0.0;
+   size_t i = 0;
+   bool negative = false;
 
-   std::size_t processedCharacters = 0;
-   double value = std::stod(normalized, &processedCharacters);
-
-   if (processedCharacters != normalized.size()) {
-      throw std::invalid_argument("invalid floating-point literal");
+   if (!normalized.empty() && normalized[0] == '-') {
+      negative = true;
+      i = 1;
    }
 
-   return value;
+   while (i < normalized.size() && normalized[i] != '.') {
+      result = result * 10.0 + (normalized[i] - '0');
+      i++;
+   }
+
+   if (i < normalized.size() && normalized[i] == '.') {
+      i++;
+      double weight = 0.1;
+      while (i < normalized.size()) {
+         result += (normalized[i] - '0') * weight;
+         weight /= 10.0;
+         i++;
+      }
+   }
+
+   return negative ? -result : result;
 }
 
 bool isValidSimpleEscape(char c) {
@@ -313,12 +349,14 @@ Token Lexer::readStringLiteral(SourceLocation start) {
    std::string value;
 
    while (!source_.isAtEnd() && source_.peek() != '"') {
-      char c = source_.advance();
-      lexeme.push_back(c);
+      char c = source_.peek();
 
       if (c == '\n') {
          return makeInvalidToken(lexeme, start);
       }
+
+      source_.advance();
+      lexeme.push_back(c);
 
       if (c == '\\') {
          if (source_.isAtEnd()) {
@@ -392,67 +430,65 @@ Token Lexer::readNumberLiteral(char first, SourceLocation start) {
    std::string lexeme;
    lexeme.push_back(first);
 
-   if (!readDigitSequenceRest(lexeme)) {
-      return makeInvalidToken(lexeme, start);
-   }
-
-   bool isFloat = false;
-
-   if (source_.peek() == '.' && isDigit(source_.peekNext())) {
-      isFloat = true;
-      lexeme.push_back(source_.advance()); // .
-
-      if (!readDigitSequenceRest(lexeme)) {
-         return makeInvalidToken(lexeme, start);
-      }
-   }
-
-   try {
-      if (isFloat) {
-         double value = parseFloatLiteral(lexeme);
-         return makeFloatToken(lexeme, start, value);
-      }
-
-      int64_t value = parseIntLiteral(lexeme);
-      return makeIntToken(lexeme, start, value);
-   } catch (const std::exception&) {
-      return makeInvalidToken(lexeme, start);
-   }
-}
-
-bool Lexer::readDigitSequenceRest(std::string& text) {
-   bool lastWasUnderscore = false;
+   char lastChar = first;
+   bool hasDot = false;
+   bool isError = false;
 
    while (!source_.isAtEnd()) {
       char c = source_.peek();
 
       if (isDigit(c)) {
-         text.push_back(source_.advance());
-         lastWasUnderscore = false;
-      } else if (c == '_') {
-         text.push_back(source_.advance());
+         lexeme.push_back(source_.advance());
+         lastChar = c;
+      } 
+      else if (c == '_') {
+         if (lastChar == '_') isError = true;
+         if (lastChar == '.') isError = true;
 
-         if (lastWasUnderscore || !isDigit(source_.peek())) {
-            while (!source_.isAtEnd()) {
-               char p = source_.peek();
+         lexeme.push_back(source_.advance());
+         lastChar = c;
+      } 
+      else if (c == '.') {
+         if (hasDot) break;
+         if (lastChar == '_') isError = true;
 
-               if (p != '.' && p != '_' && !isDigit(p)) {
-                  break;
-               }
-
-               text.push_back(source_.advance());
-            }
-
-            return false;
+         if (!isDigit(source_.peekNext())) {
+            break; 
          }
 
-         lastWasUnderscore = true;
-      } else {
+         lexeme.push_back(source_.advance());
+         lastChar = c;
+         hasDot = true;
+      } 
+      else if (isAlpha(c)) {
+         isError = true;
+         lexeme.push_back(source_.advance());
+         lastChar = c;
+      } 
+      else {
          break;
       }
    }
 
-   return !lastWasUnderscore;
+   if (lastChar == '_') {
+      isError = true;
+   }
+
+   if (isError) {
+      while (!source_.isAtEnd() && (isAlphaNumeric(source_.peek()) || source_.peek() == '_' || source_.peek() == '.')) {
+         lexeme.push_back(source_.advance());
+      }
+      return makeInvalidToken(lexeme, start);
+   }
+
+   try {
+      if (hasDot) {
+         return makeFloatToken(lexeme, start, parseFloatLiteral(lexeme));
+      }
+      return makeIntToken(lexeme, start, parseIntLiteral(lexeme));
+   } catch (const std::exception&) {
+      return makeInvalidToken(lexeme, start);
+   }
 }
 
 Token Lexer::readIdentifierOrKeyword(char first, SourceLocation start) {
