@@ -11,6 +11,10 @@ CTestTestfile.cmake
 DartConfiguration.tcl
 Testing/
 
+TKOM_2026L_Mateusz_Jakubiak_5_.pdf
+zzz_wynik_komenda.txt
+zzz_wynik.txt
+
 
 *.o
 *.obj

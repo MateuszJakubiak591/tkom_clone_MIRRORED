@@ -5,6 +5,24 @@
 
 #include "syntax/Node.hpp"
 
+/*
+type = value_type | "void";
+
+value_type = basic_value_type
+           | list_type
+           | user_type;
+
+basic_value_type = "int"
+                 | "uint"
+                 | "float"
+                 | "bool"
+                 | "char"
+                 | "string";
+
+list_type = "list" , "<" , value_type , ">" ;
+user_type = identifier ;
+*/
+
 class TypeNode : public Node {
 public:
    using Node::Node;
