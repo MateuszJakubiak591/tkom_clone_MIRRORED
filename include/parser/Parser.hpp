@@ -21,8 +21,11 @@ public:
 
 private:
    Lexer& lexer_;
+
    Token current_;
+   Token next_;
    Token previous_;
+
    ErrorHandler* errorHandler_;
 
    void advance();
@@ -34,11 +37,16 @@ private:
    const Token& consume(TokenType type, const std::string& message);
 
    void skipNewlines();
+   void consumeStatementEnd();
 
    bool isAtEnd() const;
 
    bool isValueTypeStart() const;
    bool isBasicValueTypeStart() const;
+   bool looksLikeVariableDeclaration() const;
+
+   bool isAssignable(const Expression& expression) const;
+   bool isAssignableObject(const Expression& expression) const;
 
    std::unique_ptr<TypeNode> parseType();
    std::unique_ptr<TypeNode> parseValueType();
@@ -64,7 +72,5 @@ private:
    StmtPtr parseExpressionOrAssignmentStatement();
    StmtPtr parseBlockStatement();
    StmtPtr parseReturnStatement();
-   StmtPtr parseVariableDeclarationStatement(bool allowMutable);
-   StmtPtr parseExpressionStatement();
-
+   StmtPtr parseVariableDeclarationStatement();
 };
