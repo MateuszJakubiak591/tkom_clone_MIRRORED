@@ -221,25 +221,6 @@ ExprPtr Parser::parseLogicalAndExpression() {
    return expression;
 }
 
-ExprPtr Parser::parseLogicalAndExpression() {
-   auto expression = parseEqualityExpression();
-
-   while (check(TokenType::LogicAnd)) {
-      SourceLocation location = current_.location();
-      advance();
-
-      auto right = parseEqualityExpression();
-
-      expression = std::make_unique<LogicalAndExpression>(
-         location,
-         std::move(expression),
-         std::move(right)
-      );
-   }
-
-   return expression;
-}
-
 ExprPtr Parser::parseEqualityExpression() {
    auto expression = parseRelationalExpression();
 
@@ -759,6 +740,32 @@ StmtPtr Parser::parseStatement() {
    }
 
    return parseExpressionOrAssignmentStatement();
+}
+
+StmtPtr Parser::parseBlockStatement() {
+   SourceLocation location = current_.location();
+
+   consume(TokenType::LBrace, "expected '{'");
+
+   skipNewlines();
+
+   std::vector<StmtPtr> statements;
+
+   while (!check(TokenType::RBrace) && !isAtEnd()) {
+      statements.push_back(parseStatement());
+      skipNewlines();
+   }
+
+   consume(TokenType::RBrace, "expected '}' after block");
+
+   if (check(TokenType::Newline)) {
+      advance();
+   }
+
+   return std::make_unique<BlockStatement>(
+      location,
+      std::move(statements)
+   );
 }
 
 bool Parser::looksLikeVariableDeclaration() const {

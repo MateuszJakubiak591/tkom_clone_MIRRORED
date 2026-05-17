@@ -6,6 +6,9 @@
 #include <vector>
 #include <typeinfo>
 
+#include "parser/Parser.hpp"
+#include "diagnostics/ErrorHandler.hpp"
+
 
 std::vector<Token> tokenizeString(
    const std::string& filename,
@@ -30,3 +33,5 @@ void assertToken(
 );
 
 void assertNoInvalidTokens(const std::vector<Token>& tokens);
+
+StmtPtr parseString(const std::string& code, ErrorHandler* errHandler = nullptr);

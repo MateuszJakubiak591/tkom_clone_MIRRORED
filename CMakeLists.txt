@@ -15,6 +15,11 @@ add_library(djm_core
    src/lexer/Lexer.cpp
    src/lexer/CharBasicLib.cpp
 
+   src/parser/Parser.cpp
+
+   src/diagnostics/Error.cpp
+   src/diagnostics/ErrorHandler.cpp
+
 )
 
 target_include_directories(djm_core PUBLIC
@@ -81,3 +86,8 @@ add_executable(token_consistency_tests tests/TestUtils.cpp tests/token_consisten
 target_link_libraries(token_consistency_tests PRIVATE djm_core gtest_main) 
 target_include_directories(token_consistency_tests PRIVATE ${TEST_INCLUDES}) 
 gtest_discover_tests(token_consistency_tests) 
+
+add_executable(parser_simple_tests tests/TestUtils.cpp tests/parser_simple_tests.cpp) 
+target_link_libraries(parser_simple_tests PRIVATE djm_core gtest_main) 
+target_include_directories(parser_simple_tests PRIVATE ${TEST_INCLUDES}) 
+gtest_discover_tests(parser_simple_tests) 
