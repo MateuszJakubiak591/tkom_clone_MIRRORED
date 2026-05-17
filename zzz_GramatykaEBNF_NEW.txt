@@ -119,7 +119,7 @@ for_stmt        = "for" , value_type , identifier , "in" , expression , block ;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-z
+expression = logical_or_expr ;
 
 logical_or_expr = logical_and_expr ,
                   { "||" , logical_and_expr } ;
