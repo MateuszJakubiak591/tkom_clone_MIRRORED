@@ -18,6 +18,7 @@ public:
 
    ExprPtr parseExpression();
    StmtPtr parseStatement();
+   StmtPtr parseBlockStatement();
 
 private:
    Lexer& lexer_;
@@ -70,7 +71,12 @@ private:
    std::vector<ExprPtr> parseArgumentList();
 
    StmtPtr parseExpressionOrAssignmentStatement();
-   StmtPtr parseBlockStatement();
+   
    StmtPtr parseReturnStatement();
    StmtPtr parseVariableDeclarationStatement();
 };
+
+class ParseError : public std::runtime_error {
+   public:
+      ParseError() : std::runtime_error("Parser error") {}
+   };

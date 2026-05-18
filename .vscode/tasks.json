@@ -32,7 +32,7 @@
             "--build",
             "${workspaceFolder}/build"
          ],
-         //"dependsOn": "cmake configure",
+         "dependsOn": "cmake configure",
          "group": {
             "kind": "build",
             "isDefault": false

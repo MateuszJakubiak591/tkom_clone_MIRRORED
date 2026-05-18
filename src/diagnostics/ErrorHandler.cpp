@@ -29,17 +29,7 @@ const std::vector<Error>& ErrorHandler::errors() const {
 
 void ErrorHandler::printErrors(std::ostream& out) const {
    for (const Error& error : errors_) {
-      out
-         << error.location.filename
-         << ":"
-         << error.location.line
-         << ":"
-         << error.location.column
-         << ": "
-         << errorTypeToString(error.type)
-         << " error: "
-         << error.message
-         << "\n";
+      out << error.toString() << "\n";
 
       printSourceSnippet(out, error.location);
 

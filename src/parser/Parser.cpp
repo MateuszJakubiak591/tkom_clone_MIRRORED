@@ -171,12 +171,11 @@ std::unique_ptr<TypeNode> Parser::parseValueType() {
 
 
    if (errorHandler_ != nullptr) {
-      errorHandler_->report(
-         ErrorType::Parser,
-         "expected value type",
-         current_.location()
-      );
+      errorHandler_->report(ErrorType::Parser, "expected value type",
+                                                   current_.location());
    }
+
+   throw ParseError();
 }
 
 ExprPtr Parser::parseExpression() {
@@ -609,6 +608,10 @@ ExprPtr Parser::parsePostfixExpression() {
 
 std::vector<ExprPtr> Parser::parseArgumentList() {
    consume(TokenType::LParen, "expected '('");
+   // Teoretycznie nie powinno się we wcześniejszym kodzie
+   // dopuścić do sytuacji, że wywołujemy powyższe parse_XXX
+   // bez sprawdzenia check(Token:LParen), ale w razie czego
+   // tak napisałem (gdyby wywołać powyższe parse_XXX bez uprzedniego sprawdzenia)
 
    std::vector<ExprPtr> arguments;
 
@@ -698,15 +701,15 @@ ExprPtr Parser::parsePrimaryExpression() {
       );
    }
 
-   //throw std::runtime_error("expected expression");
+   throw ParseError();
 }
 
 ExprPtr Parser::parseListLiteralExpression(SourceLocation location) {
    consume(TokenType::LBracket, "expected '['");
    // Teoretycznie nie powinno się we wcześniejszym kodzie
-   // dopuścić do sytuacji, że wywołujemy parseListLiteralExpression
+   // dopuścić do sytuacji, że wywołujemy powyższe parse_XXX
    // bez sprawdzenia check(Token:LBracket), ale w razie czego
-   // tak napisałem
+   // tak napisałem (gdyby wywołać powyższe parse_XXX bez uprzedniego sprawdzenia)
 
    std::vector<ExprPtr> elements;
 
@@ -725,27 +728,45 @@ ExprPtr Parser::parseListLiteralExpression(SourceLocation location) {
 }
 
 StmtPtr Parser::parseStatement() {
-   skipNewlines();
+   try {
+      skipNewlines();
 
-   if (check(TokenType::LBrace)) {
-      return parseBlockStatement();
+      if (isAtEnd()) {
+         return nullptr;
+      }
+
+      if (check(TokenType::LBrace)) {
+         return parseBlockStatement();
+      }
+
+      if (check(TokenType::KwReturn)) {
+         return parseReturnStatement();
+      }
+
+      if (looksLikeVariableDeclaration()) {
+         return parseVariableDeclarationStatement();
+      }
+
+      return parseExpressionOrAssignmentStatement();
+   } 
+   catch (const ParseError& e) {
+      // Synchronizacja
+      advance(); 
+      while (!isAtEnd() && previous_.type() != TokenType::Newline) {
+         advance();
+      }
+      return nullptr; 
    }
-
-   if (check(TokenType::KwReturn)) {
-      return parseReturnStatement();
-   }
-
-   if (looksLikeVariableDeclaration()) {
-      return parseVariableDeclarationStatement();
-   }
-
-   return parseExpressionOrAssignmentStatement();
 }
 
 StmtPtr Parser::parseBlockStatement() {
    SourceLocation location = current_.location();
 
    consume(TokenType::LBrace, "expected '{'");
+   // Teoretycznie nie powinno się we wcześniejszym kodzie
+   // dopuścić do sytuacji, że wywołujemy powyższe parse_XXX
+   // bez sprawdzenia check(Token:LBrace), ale w razie czego
+   // tak napisałem (gdyby wywołać powyższe parse_XXX bez uprzedniego sprawdzenia)
 
    skipNewlines();
 
@@ -769,6 +790,8 @@ StmtPtr Parser::parseBlockStatement() {
 }
 
 bool Parser::looksLikeVariableDeclaration() const {
+   // zmienne globalne powinny być de facto stałymi,
+   // ale to już ustali analizator semantyczny
    if (check(TokenType::KwMut)) {
       return true;
    }

@@ -13,3 +13,15 @@ std::string errorTypeToString(ErrorType type) {
    // w przyszłości będą też błędy semantyczne, ale w sumie zbędne
    // to return Unkown
 }
+
+std::string Error::toString() const {
+   std::ostringstream oss;
+
+   oss << "Error [" << errorTypeToString(type) << "] "
+       << "at " << location.filename
+       << ":" << location.line
+       << ":" << location.column
+       << ": " << message;
+
+   return oss.str();
+}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <sstream>
 
 #include "source/SourceLocation.hpp"
 
@@ -24,4 +25,6 @@ struct Error {
       : type(type),
         message(std::move(message)),
         location(std::move(location)) {}
+   
+   std::string toString() const;
 };
