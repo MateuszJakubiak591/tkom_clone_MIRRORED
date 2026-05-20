@@ -1,13 +1,5 @@
-import fun1 from "file1.djm"
-
-int MAX = 10
-
-fun main() -> int {
-   return MAX
-}
-
-/*
 class User {
-   name: string
-}
-*/
+   mut setName(name: string) -> void {
+      this.name = name
+   }
+};

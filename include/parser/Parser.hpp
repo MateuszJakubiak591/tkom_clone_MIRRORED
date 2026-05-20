@@ -13,9 +13,11 @@
 
 #include "diagnostics/ErrorHandler.hpp"
 
+#include "lexer/TokenSource.hpp"
+
 class Parser {
 public:
-   explicit Parser(Lexer& lexer, ErrorHandler* errorHandler = nullptr);
+   explicit Parser(TokenSource& tokenSource, ErrorHandler* errorHandler = nullptr);
 
    ExprPtr parseExpression();
    StmtPtr parseStatement();
@@ -26,7 +28,8 @@ public:
    std::unique_ptr<ClassDeclaration> parseClassDeclaration();
 
 private:
-   Lexer& lexer_;
+   //Lexer& lexer_;
+   TokenSource& tokenSource_;
 
    Token current_;
    Token next_;

@@ -41,13 +41,13 @@ int main(int argc, char** argv) {
    //makeBoolToken("true1", sc, true);
 
    const std::string path = argv[1];
+   ErrorHandler errHandler(readFileToString(path));
 
    try {
       //std::string content = readFileToString(path);
       //StringSource source(path, content);
       FileSource fileSource(path);
       Lexer lexer(fileSource);
-      ErrorHandler errHandler(readFileToString(path));
       Parser parser(lexer, &errHandler);
 
       auto parsedStatements = parser.parseProgram();
@@ -55,9 +55,12 @@ int main(int argc, char** argv) {
       errHandler.printErrors(std::cout);
    } catch (const std::exception& e) {
       std::cerr << "Błąd: " << e.what() << "\n";
+      errHandler.printErrors(std::cout);
       return 1;
    }    
 }
+
+
 
 
 

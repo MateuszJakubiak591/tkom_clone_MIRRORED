@@ -4,12 +4,13 @@
 
 #include "source/CharSource.hpp"
 #include "lexer/Token.hpp"
+#include "lexer/TokenSource.hpp"
 
-class Lexer {
+class Lexer : public TokenSource {
 public:
    explicit Lexer(CharSource& source);
 
-   Token nextToken();
+   Token nextToken() override;
 
 private:
    CharSource& source_;

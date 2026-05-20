@@ -91,3 +91,18 @@ add_executable(parser_simple_tests tests/TestUtils.cpp tests/parser_simple_tests
 target_link_libraries(parser_simple_tests PRIVATE djm_core gtest_main) 
 target_include_directories(parser_simple_tests PRIVATE ${TEST_INCLUDES}) 
 gtest_discover_tests(parser_simple_tests) 
+
+add_executable(parse_program_tests tests/TestUtils.cpp tests/parse_program_tests.cpp) 
+target_link_libraries(parse_program_tests PRIVATE djm_core gtest_main) 
+target_include_directories(parse_program_tests PRIVATE ${TEST_INCLUDES}) 
+gtest_discover_tests(parse_program_tests)
+
+add_executable(parser_unit_tests tests/TestUtils.cpp tests/parser_unit_tests.cpp) 
+target_link_libraries(parser_unit_tests PRIVATE djm_core gtest_main) 
+target_include_directories(parser_unit_tests PRIVATE ${TEST_INCLUDES}) 
+gtest_discover_tests(parser_unit_tests)
+
+add_executable(parser_complex_expression_tests tests/TestUtils.cpp tests/parser_complex_expression_tests.cpp) 
+target_link_libraries(parser_complex_expression_tests PRIVATE djm_core gtest_main) 
+target_include_directories(parser_complex_expression_tests PRIVATE ${TEST_INCLUDES}) 
+gtest_discover_tests(parser_complex_expression_tests)

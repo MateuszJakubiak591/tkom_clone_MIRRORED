@@ -9,20 +9,20 @@
 
 #include <variant>
 
-Parser::Parser(Lexer& lexer, ErrorHandler* errorHandler)
-   : lexer_(lexer),
+Parser::Parser(TokenSource& tokenSource, ErrorHandler* errorHandler)
+   : tokenSource_(tokenSource),
      current_(makeToken(TokenType::EndOfFile, "", SourceLocation{})),
      next_(makeToken(TokenType::EndOfFile, "", SourceLocation{})),
      previous_(makeToken(TokenType::EndOfFile, "", SourceLocation{})),
      errorHandler_(errorHandler) {
-   current_ = lexer_.nextToken();
-   next_ = lexer_.nextToken();
+   current_ = tokenSource_.nextToken();
+   next_ = tokenSource_.nextToken();
 }
 
 void Parser::advance() {
    previous_ = current_;
    current_ = next_;
-   next_ = lexer_.nextToken();
+   next_ = tokenSource_.nextToken();
 
    if (current_.type() == TokenType::Invalid) {
       if (errorHandler_ != nullptr) {
@@ -33,7 +33,7 @@ void Parser::advance() {
          );
       }
 
-      //throw std::runtime_error("invalid token: " + current_.lexeme());
+      throw ParseError();
    }
 }
 
@@ -1338,7 +1338,26 @@ ClassMemberPtr Parser::parseIdentifierStartedClassMember(
    }
 
    if (check(TokenType::Colon)) {
-      return parseFieldAfterModifier(FieldModifier::Static, nameToken.location());
+      //return parseFieldAfterModifier(FieldModifier::None, nameToken.location());
+      consume(TokenType::Colon, "expected ':' after field name");
+
+      auto type = parseValueType();
+
+      ExprPtr initializer = nullptr;
+
+      if (match(TokenType::Assign)) {
+         initializer = parseExpression();
+      }
+
+      consumeStatementEnd();
+
+      return std::make_unique<FieldDeclaration>(
+         nameToken.location(),
+         FieldModifier::None,
+         nameToken.lexeme(),
+         std::move(type),
+         std::move(initializer)
+      );
    }
 
    if (errorHandler_ != nullptr) {
