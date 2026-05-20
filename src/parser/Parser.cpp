@@ -1033,42 +1033,6 @@ DeclPtr Parser::parseTopLevelDeclaration() {
    throw ParseError();
 }
 
-
-// Parsowanie pola (z wcześniej odczytanym, i podanym 'static'/'private')
-std::unique_ptr<FieldDeclaration> Parser::parseFieldAfterModifier(
-   FieldModifier modifier,
-   SourceLocation location
-) {
-   const Token& nameToken = consume(
-      TokenType::Identifier,
-      "expected field name"
-   );
-
-   consume(TokenType::Colon, "expected ':' after field name");
-
-   auto type = parseValueType();
-
-   ExprPtr initializer = nullptr;
-
-   if (match(TokenType::Assign)) {
-      initializer = parseExpression();
-   }
-
-   consumeStatementEnd();
-
-   return std::make_unique<FieldDeclaration>(
-      location,
-      modifier,
-      VariableDeclarator{
-         nameToken.lexeme(),
-         nameToken.location()
-      },
-      std::move(type),
-      std::move(initializer)
-   );
-}
-
-
 ImportDeclPtr Parser::parseImportDeclaration() {
    SourceLocation location = current_.location();
 
@@ -1143,4 +1107,284 @@ std::vector<ParameterNode> Parser::parseParameterList() {
    }
 
    return parameters;
+}
+
+std::unique_ptr<FunctionDeclaration> Parser::parseFunctionDeclaration() {
+   SourceLocation location = current_.location();
+
+   consume(TokenType::KwFun, "expected 'fun'");
+
+   const Token& nameToken = consume(
+      TokenType::Identifier,
+      "expected function name after 'fun'"
+   );
+
+   consume(TokenType::LParen, "expected '(' after function name");
+
+   std::vector<ParameterNode> parameters;
+
+   if (!check(TokenType::RParen)) {
+      parameters = parseParameterList();
+   }
+
+   consume(TokenType::RParen, "expected ')' after parameter list");
+
+   consume(TokenType::Arrow, "expected '->' after function parameters");
+
+   auto returnType = parseType();
+
+   auto body = parseBlock();
+
+   return std::make_unique<FunctionDeclaration>(
+      location,
+      nameToken.lexeme(),
+      std::move(parameters),
+      std::move(returnType),
+      std::move(body)
+   );
+}
+
+// Teoretycznie można by wydzielić wspólną część dla parsowania
+// globalnej stałej i zmiennej (lokalnej), aczkolwiek
+// jeśli zrobić oddzielnie, to łatwiej byłoby wprowadzić zmianę
+// gramatyki polegającą na obowiązkowym inicjalizowaniu stałej globalnej wartością
+// (bo inaczej po co w ogóle ją deklarować, żeby trzymała domyślną?)
+std::unique_ptr<GlobalConstantDeclaration> Parser::parseGlobalConstantDeclaration() {
+   SourceLocation location = current_.location();
+
+   auto type = parseValueType();
+
+   std::vector<VariableDeclarator> names;
+
+   const Token& firstName = consume(
+      TokenType::Identifier,
+      "expected global constant name"
+   );
+
+   names.push_back(VariableDeclarator{
+      firstName.lexeme(),
+      firstName.location()
+   });
+
+   while (match(TokenType::Comma)) {
+      const Token& name = consume(
+         TokenType::Identifier,
+         "expected global constant name after ','"
+      );
+
+      names.push_back(VariableDeclarator{
+         name.lexeme(),
+         name.location()
+      });
+   }
+
+   ExprPtr initializer = nullptr;
+
+   if (match(TokenType::Assign)) {
+      initializer = parseExpression();
+   }
+
+   consumeStatementEnd();
+
+   return std::make_unique<GlobalConstantDeclaration>(
+      location,
+      std::move(type),
+      std::move(names),
+      std::move(initializer)
+   );
+}
+
+std::unique_ptr<ClassDeclaration> Parser::parseClassDeclaration() {
+   SourceLocation location = current_.location();
+
+   consume(TokenType::KwClass, "expected 'class'");
+
+   const Token& nameToken = consume(
+      TokenType::Identifier,
+      "expected class name after 'class'"
+   );
+
+   std::string className = nameToken.lexeme();
+
+   consume(TokenType::LBrace, "expected '{' after class name");
+
+   skipNewlines();
+
+   std::vector<ClassMemberPtr> members;
+
+   while (!check(TokenType::RBrace) && !isAtEnd()) {
+      members.push_back(parseClassMember(className));
+      skipNewlines();
+   }
+
+   consume(TokenType::RBrace, "expected '}' after class body");
+
+   if (check(TokenType::Newline)) {
+      advance();
+   }
+
+   return std::make_unique<ClassDeclaration>(
+      location,
+      std::move(className),
+      std::move(members)
+   );
+}
+
+// Dopasowywanie słów początkowych w ten sposób może nie wygląda
+// na elegancki sposób, aczkolwiek umożliwia to odróżnienie sytuacji,
+// gdy deklarowana jest metoda (mut jest tylko dla metod według gramatyki),
+// private jest tylko dla atrybutów, a static może być dla obydwu.
+ClassMemberPtr Parser::parseClassMember(const std::string& className) {
+   SourceLocation location = current_.location();
+
+   if (match(TokenType::KwPrivate)) {
+      return parseFieldAfterModifier(FieldModifier::Private, location);
+   }
+
+   if (match(TokenType::KwStatic)) {
+      return parseStaticClassMember();
+   }
+
+   if (match(TokenType::KwMut)) {
+      return parseMethodAfterModifier(MethodModifier::Mut, location);
+   }
+
+   if (check(TokenType::KwFun)) {
+      return parseMethodAfterModifier(MethodModifier::None, current_.location());
+   }
+
+   if (check(TokenType::Identifier)) {
+      return parseIdentifierStartedClassMember(className);
+   }
+
+   if (errorHandler_ != nullptr) {
+      errorHandler_->report(
+         ErrorType::Parser,
+         "expected class member",
+         current_.location()
+      );
+   }
+
+   throw ParseError();
+}
+
+ClassMemberPtr Parser::parseStaticClassMember() {
+   SourceLocation location = previous_.location();
+
+   if (check(TokenType::KwFun)) {
+      return parseMethodAfterModifier(MethodModifier::Static, location);
+   }
+
+   return parseFieldAfterModifier(FieldModifier::Static, location);
+}
+
+// Parsowanie pola (z wcześniej odczytanym, i podanym 'static'/'private')
+std::unique_ptr<FieldDeclaration> Parser::parseFieldAfterModifier(
+   FieldModifier modifier,
+   SourceLocation location
+) {
+   const Token& nameToken = consume(
+      TokenType::Identifier,
+      "expected field name"
+   );
+
+   consume(TokenType::Colon, "expected ':' after field name");
+
+   auto type = parseValueType();
+
+   ExprPtr initializer = nullptr;
+
+   if (match(TokenType::Assign)) {
+      initializer = parseExpression();
+   }
+
+   consumeStatementEnd();
+
+   return std::make_unique<FieldDeclaration>(
+      location,
+      modifier,
+      nameToken.lexeme(),
+      std::move(type),
+      std::move(initializer)
+   );
+}
+
+std::unique_ptr<MethodDeclaration> Parser::parseMethodAfterModifier(
+   MethodModifier modifier,
+   SourceLocation location
+) {
+   auto function = parseFunctionDeclaration();
+
+   return std::make_unique<MethodDeclaration>(
+      location,
+      modifier,
+      std::move(function)
+   );
+}
+
+ClassMemberPtr Parser::parseIdentifierStartedClassMember(
+   const std::string& className
+) {
+   const Token& nameToken = consume(
+      TokenType::Identifier,
+      "expected identifier"
+   );
+
+   if (check(TokenType::LParen)) {
+      return parseConstructorAfterName(className, nameToken);
+   }
+
+   if (check(TokenType::Colon)) {
+      return parseFieldAfterModifier(FieldModifier::Static, nameToken.location());
+   }
+
+   if (errorHandler_ != nullptr) {
+      errorHandler_->report(
+         ErrorType::Parser,
+         "expected '(' or ':' after identifier in class member",
+         current_.location()
+      );
+   }
+
+   throw ParseError();
+}
+
+std::unique_ptr<ConstructorDeclaration> Parser::parseConstructorAfterName(
+   const std::string& className,
+   const Token& nameToken
+) {
+   SourceLocation location = nameToken.location();
+   // Być może sprawdzanie, czy konstruktor ma nazwę taką samą jak klasa
+   // nie jest w kwestii parsera - azkolwiek można by było w gramatyce wprowadzić
+   // słowo kluczowe 'constructor', wtedy by zdecydowanie było
+   if (nameToken.lexeme() != className) {
+      if (errorHandler_ != nullptr) {
+         errorHandler_->report(
+            ErrorType::Parser,
+            "constructor name must match class name",
+            nameToken.location()
+         );
+      }
+
+      throw ParseError();
+   }
+
+   consume(TokenType::LParen, "expected '(' after constructor name");
+
+   std::vector<ParameterNode> parameters;
+
+   if (!check(TokenType::RParen)) {
+      parameters = parseParameterList();
+   }
+
+   consume(TokenType::RParen, "expected ')' after constructor parameters");
+
+   auto body = parseBlock();
+
+   return std::make_unique<ConstructorDeclaration>(
+      location,
+      nameToken.lexeme(),
+      std::move(parameters),
+      std::move(body)
+   );
 }
