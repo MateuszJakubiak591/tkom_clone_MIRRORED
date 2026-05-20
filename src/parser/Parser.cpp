@@ -5,6 +5,7 @@
 
 #include "diagnostics/ErrorHandler.hpp"
 #include "diagnostics/Error.hpp"
+#include "syntax/Declarations.hpp"
 
 #include <variant>
 
@@ -59,6 +60,7 @@ const Token& Parser::consume(TokenType type, const std::string& message) {
       }
 
       //throw std::runtime_error(message);
+      throw ParseError();
    }
 
    advance();
@@ -759,7 +761,7 @@ StmtPtr Parser::parseStatement() {
    }
 }
 
-StmtPtr Parser::parseBlockStatement() {
+std::unique_ptr<BlockStatement> Parser::parseBlock() {
    SourceLocation location = current_.location();
 
    consume(TokenType::LBrace, "expected '{'");
@@ -787,6 +789,10 @@ StmtPtr Parser::parseBlockStatement() {
       location,
       std::move(statements)
    );
+}
+
+StmtPtr Parser::parseBlockStatement() {
+   return parseBlock();
 }
 
 bool Parser::looksLikeVariableDeclaration() const {
@@ -962,4 +968,179 @@ StmtPtr Parser::parseReturnStatement() {
       location,
       std::move(expression)
    );
+}
+
+std::unique_ptr<Program> Parser::parseProgram() {
+   SourceLocation location = current_.location();
+
+   skipNewlines();
+
+   std::vector<ImportDeclPtr> imports;
+
+   while (check(TokenType::KwImport)) {
+      imports.push_back(parseImportDeclaration());
+      skipNewlines();
+   }
+
+   std::vector<DeclPtr> declarations;
+
+   while (!isAtEnd()) {
+      skipNewlines();
+
+      if (isAtEnd()) {
+         break;
+      }
+
+      declarations.push_back(parseTopLevelDeclaration());
+      skipNewlines();
+   }
+
+   return std::make_unique<Program>(
+      location,
+      std::move(imports),
+      std::move(declarations)
+   );
+}
+
+DeclPtr Parser::parseTopLevelDeclaration() {
+   if (check(TokenType::KwClass)) {
+      return parseClassDeclaration();
+   }
+
+   if (check(TokenType::KwFun)) {
+      return parseFunctionDeclaration();
+   }
+
+   // Tu można pomyśleć, żeby zwracało błąd, jeśli
+   // wykryje mut, ale pewnie wtedy należałoby użyć
+   // w metodzie parseGlobalConstantDeclaration
+   // VariableDeclarationStatement
+   // zamiast GlobalCOnstantDeclaration (tego zupełnie się pozbyć)
+
+   // Jednak zwrócenie Error msg = "expected top-level declaration"też jest okej (chyba)
+   if (isValueTypeStart()) {
+      return parseGlobalConstantDeclaration();
+   }
+
+   if (errorHandler_ != nullptr) {
+      errorHandler_->report(
+         ErrorType::Parser,
+         "expected top-level declaration",
+         current_.location()
+      );
+   }
+
+   throw ParseError();
+}
+
+
+// Parsowanie pola (z wcześniej odczytanym, i podanym 'static'/'private')
+std::unique_ptr<FieldDeclaration> Parser::parseFieldAfterModifier(
+   FieldModifier modifier,
+   SourceLocation location
+) {
+   const Token& nameToken = consume(
+      TokenType::Identifier,
+      "expected field name"
+   );
+
+   consume(TokenType::Colon, "expected ':' after field name");
+
+   auto type = parseValueType();
+
+   ExprPtr initializer = nullptr;
+
+   if (match(TokenType::Assign)) {
+      initializer = parseExpression();
+   }
+
+   consumeStatementEnd();
+
+   return std::make_unique<FieldDeclaration>(
+      location,
+      modifier,
+      VariableDeclarator{
+         nameToken.lexeme(),
+         nameToken.location()
+      },
+      std::move(type),
+      std::move(initializer)
+   );
+}
+
+
+ImportDeclPtr Parser::parseImportDeclaration() {
+   SourceLocation location = current_.location();
+
+   consume(TokenType::KwImport, "expected 'import'");
+
+   bool importAll = false;
+   std::vector<std::string> names;
+
+   if (match(TokenType::Multiply)) {
+      importAll = true;
+   } else {
+      const Token& firstName = consume(
+         TokenType::Identifier,
+         "expected imported name or '*'"
+      );
+
+      names.push_back(firstName.lexeme());
+
+      while (match(TokenType::Comma)) {
+         const Token& name = consume(
+            TokenType::Identifier,
+            "expected imported name after ','"
+         );
+
+         names.push_back(name.lexeme());
+      }
+   }
+
+   consume(TokenType::KwFrom, "expected 'from' after import spec");
+
+   const Token& pathToken = consume(
+      TokenType::StringLiteral,
+      "expected string literal after 'from'"
+   );
+
+   consumeStatementEnd();
+
+   std::string path = std::get<std::string>(pathToken.value());
+
+   return std::make_unique<ImportDeclaration>(
+      location,
+      importAll,
+      std::move(names),
+      std::move(path)
+   );
+}
+
+ParameterNode Parser::parseParameter() {
+   const Token& nameToken = consume(
+      TokenType::Identifier,
+      "expected parameter name"
+   );
+
+   consume(TokenType::Colon, "expected ':' after parameter name");
+
+   auto type = parseValueType();
+
+   return ParameterNode{
+      nameToken.lexeme(),
+      nameToken.location(),
+      std::move(type)
+   };
+}
+
+std::vector<ParameterNode> Parser::parseParameterList() {
+   std::vector<ParameterNode> parameters;
+
+   parameters.push_back(parseParameter());
+
+   while (match(TokenType::Comma)) {
+      parameters.push_back(parseParameter());
+   }
+
+   return parameters;
 }

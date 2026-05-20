@@ -9,6 +9,7 @@
 #include "syntax/Expressions.hpp"
 #include "syntax/Statements.hpp"
 #include "syntax/Type.hpp"
+#include "syntax/Declarations.hpp"
 
 #include "diagnostics/ErrorHandler.hpp"
 
@@ -19,6 +20,10 @@ public:
    ExprPtr parseExpression();
    StmtPtr parseStatement();
    StmtPtr parseBlockStatement();
+
+   std::unique_ptr<Program> parseProgram();
+   std::unique_ptr<FunctionDeclaration> parseFunctionDeclaration();
+   std::unique_ptr<ClassDeclaration> parseClassDeclaration();
 
 private:
    Lexer& lexer_;
@@ -74,6 +79,44 @@ private:
    
    StmtPtr parseReturnStatement();
    StmtPtr parseVariableDeclarationStatement();
+
+   DeclPtr parseTopLevelDeclaration();
+
+   ImportDeclPtr parseImportDeclaration();
+
+   std::unique_ptr<GlobalConstantDeclaration> parseGlobalConstantDeclaration();
+
+   std::vector<ParameterNode> parseParameterList();
+   ParameterNode parseParameter();
+
+   std::unique_ptr<BlockStatement> parseBlock();
+
+   ClassMemberPtr parseClassMember(const std::string& className);
+   ClassMemberPtr parseIdentifierStartedClassMember(const std::string& className);
+   ClassMemberPtr parseStaticClassMember();
+
+   std::unique_ptr<FieldDeclaration> parseFieldAfterModifier(
+      FieldModifier modifier,
+      SourceLocation location
+   );
+
+   std::unique_ptr<FieldDeclaration> parseFieldAfterFirstName(
+      FieldModifier modifier,
+      SourceLocation location,
+      const Token& firstName
+   );
+
+   std::unique_ptr<MethodDeclaration> parseMethodAfterModifier(
+      MethodModifier modifier,
+      SourceLocation location
+   );
+
+   std::unique_ptr<ConstructorDeclaration> parseConstructorAfterName(
+      const std::string& className,
+      const Token& nameToken
+   );
+
+
 };
 
 class ParseError : public std::runtime_error {

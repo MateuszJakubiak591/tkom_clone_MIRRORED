@@ -143,3 +143,176 @@ TEST(ParserSimpleTests, ParseUserDefinedTypeWithConstructorCall) {
 
    EXPECT_TRUE(callExpr->arguments().empty());
 }
+
+TEST(ParserSimpleTests, ParseSimpleAddExpression) {
+   std::string code = "5 + x\n";
+   ErrorHandler errHandler("");
+
+   StmtPtr stmt = parseString(code, &errHandler);
+
+   EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(stmt, nullptr);
+
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   ASSERT_NE(exprStmt, nullptr);
+
+   auto* addExpr = dynamic_cast<const AddExpression*>(&exprStmt->expression());
+   ASSERT_NE(addExpr, nullptr);
+
+   auto* left = dynamic_cast<const IntLiteralExpression*>(&addExpr->left());
+   ASSERT_NE(left, nullptr);
+   EXPECT_EQ(left->value(), 5);
+
+   auto* right = dynamic_cast<const IdentifierExpression*>(&addExpr->right());
+   ASSERT_NE(right, nullptr);
+   EXPECT_EQ(right->name(), "x");
+}
+
+TEST(ParserSimpleTests, ParseOperatorMulBeforeAdd) {
+   std::string code = "2 + 3 * 4\n";
+   ErrorHandler errHandler("");
+
+   StmtPtr stmt = parseString(code, &errHandler);
+
+   EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(stmt, nullptr);
+
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   auto* mainAdd = dynamic_cast<const AddExpression*>(&exprStmt->expression());
+   ASSERT_NE(mainAdd, nullptr);
+
+   auto* two = dynamic_cast<const IntLiteralExpression*>(&mainAdd->left());
+   ASSERT_NE(two, nullptr);
+   EXPECT_EQ(two->value(), 2);
+
+   auto* mulExpr = dynamic_cast<const MultiplyExpression*>(&mainAdd->right());
+   ASSERT_NE(mulExpr, nullptr);
+}
+
+TEST(ParserSimpleTests, ParseRightAssociativePowerExpression) {
+   std::string code = "2 ^ 3 ^ 4\n";
+   ErrorHandler errHandler("");
+
+   StmtPtr stmt = parseString(code, &errHandler);
+
+   EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(stmt, nullptr);
+
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   auto* mainPower = dynamic_cast<const PowerExpression*>(&exprStmt->expression());
+   ASSERT_NE(mainPower, nullptr);
+
+   auto* leftBase = dynamic_cast<const IntLiteralExpression*>(&mainPower->left());
+   ASSERT_NE(leftBase, nullptr);
+   EXPECT_EQ(leftBase->value(), 2);
+
+   auto* nestedPower = dynamic_cast<const PowerExpression*>(&mainPower->right());
+   ASSERT_NE(nestedPower, nullptr);
+}
+
+// Być może poniższe nie jest poprawne semantycznie, ale
+// ukazuje własność gramatyki polegającą na tym, że można
+// stosować wiele operatorów unarnych po kolei
+TEST(ParserSimpleTests, ParseUnaryNotAndNegate) {
+   std::string code = "!-true\n";
+   ErrorHandler errHandler("");
+
+   StmtPtr stmt = parseString(code, &errHandler);
+
+   EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(stmt, nullptr);
+
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   auto* notExpr = dynamic_cast<const NotExpression*>(&exprStmt->expression());
+   ASSERT_NE(notExpr, nullptr);
+
+   auto* negateExpr = dynamic_cast<const NegateExpression*>(&notExpr->operand());
+   ASSERT_NE(negateExpr, nullptr);
+
+   auto* boolean = dynamic_cast<const BoolLiteralExpression*>(&negateExpr->operand());
+   ASSERT_NE(boolean, nullptr);
+   EXPECT_TRUE(boolean->value());
+}
+
+TEST(ParserSimpleTests, ParseCastExpression) {
+   std::string code = "x as float\n";
+   ErrorHandler errHandler("");
+
+   StmtPtr stmt = parseString(code, &errHandler);
+
+   EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(stmt, nullptr);
+
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   auto* castExpr = dynamic_cast<const CastExpression*>(&exprStmt->expression());
+   ASSERT_NE(castExpr, nullptr);
+
+   auto* id = dynamic_cast<const IdentifierExpression*>(&castExpr->expression());
+   ASSERT_NE(id, nullptr);
+   EXPECT_EQ(id->name(), "x");
+
+   auto* targetType = dynamic_cast<const FloatTypeNode*>(&castExpr->targetType());
+   ASSERT_NE(targetType, nullptr);
+}
+
+TEST(ParserSimpleTests, ParseChainedMemberAccessAndCall) {
+   std::string code = "user.getName()\n";
+   ErrorHandler errHandler("");
+
+   StmtPtr stmt = parseString(code, &errHandler);
+
+   EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(stmt, nullptr);
+
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+
+   auto* callExpr = dynamic_cast<const CallExpression*>(&exprStmt->expression());
+   ASSERT_NE(callExpr, nullptr);
+   EXPECT_TRUE(callExpr->arguments().empty());
+
+   auto* memberExpr = dynamic_cast<const MemberAccessExpression*>(&callExpr->callee());
+   ASSERT_NE(memberExpr, nullptr);
+   EXPECT_EQ(memberExpr->memberName(), "getName");
+
+   auto* baseId = dynamic_cast<const IdentifierExpression*>(&memberExpr->object());
+   EXPECT_EQ(baseId->name(), "user");
+}
+
+TEST(ParserSimpleTests, ParseIndexAndSliceExpression) {
+   std::string code = "matrix[1:5]\n";
+   ErrorHandler errHandler("");
+
+   StmtPtr stmt = parseString(code, &errHandler);
+
+   EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(stmt, nullptr);
+
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   auto* sliceExpr = dynamic_cast<const SliceExpression*>(&exprStmt->expression());
+   ASSERT_NE(sliceExpr, nullptr);
+
+   auto* start = dynamic_cast<const IntLiteralExpression*>(sliceExpr->start());
+   ASSERT_NE(start, nullptr);
+   EXPECT_EQ(start->value(), 1);
+
+   auto* end = dynamic_cast<const IntLiteralExpression*>(sliceExpr->end());
+   ASSERT_NE(end, nullptr);
+   EXPECT_EQ(end->value(), 5);
+}
+
+TEST(ParserSimpleTests, ParseReturnStatementWithValue) {
+   std::string code = "return 0\n";
+   ErrorHandler errHandler("");
+
+   StmtPtr stmt = parseString(code, &errHandler);
+
+   EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(stmt, nullptr);
+
+   auto* retStmt = dynamic_cast<ReturnStatement*>(stmt.get());
+   ASSERT_NE(retStmt, nullptr);
+
+   ASSERT_NE(retStmt->expression(), nullptr);
+   auto* retVal = dynamic_cast<const IntLiteralExpression*>(retStmt->expression());
+   EXPECT_EQ(retVal->value(), 0);
+}

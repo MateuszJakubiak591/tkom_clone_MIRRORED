@@ -93,7 +93,7 @@ field_modifier  = "private"
                 | "static" ;
 
 field_decl      = [ field_modifier ] ,
-                  identifier_list , ":" , value_type ,
+                  identifier , ":" , value_type ,
                   [ "=" , expression ] ;
 
 method_modifier = "mut"
