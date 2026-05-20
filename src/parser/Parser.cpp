@@ -53,7 +53,10 @@ bool Parser::match(TokenType type) {
 
 // Jeśli token pasuje, to zjada, jeśli nie, to rzuca wyjątek
 // w przeciwieńśtwie do match, które wyjątku nie rzuca
-const Token& Parser::consume(TokenType type, const std::string& message) {
+// Istniał wcześniej bug, gdzie przy const Token& Parser::consume
+// przez zwracanie referencji do previous_ był błąd przy std::get dla std::variant,
+// bo nadpisano previous_ po consume() a przed std::get
+Token Parser::consume(TokenType type, const std::string& message) {
    if (!check(type)) {
       if (errorHandler_ != nullptr) {
          errorHandler_->report(ErrorType::Parser, message, current_.location());
@@ -1063,7 +1066,7 @@ ImportDeclPtr Parser::parseImportDeclaration() {
 
    consume(TokenType::KwFrom, "expected 'from' after import spec");
 
-   const Token& pathToken = consume(
+   Token pathToken = consume(
       TokenType::StringLiteral,
       "expected string literal after 'from'"
    );

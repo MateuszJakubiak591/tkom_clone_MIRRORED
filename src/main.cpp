@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
       ErrorHandler errHandler(readFileToString(path));
       Parser parser(lexer, &errHandler);
 
-      StmtPtr parsedStatements = parser.parseBlockStatement();
+      auto parsedStatements = parser.parseProgram();
 
       errHandler.printErrors(std::cout);
    } catch (const std::exception& e) {

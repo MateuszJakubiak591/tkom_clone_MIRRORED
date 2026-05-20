@@ -40,7 +40,7 @@ private:
    bool match(TokenType type);
    bool matchNewline();
 
-   const Token& consume(TokenType type, const std::string& message);
+   Token consume(TokenType type, const std::string& message);
 
    void skipNewlines();
    void consumeStatementEnd();

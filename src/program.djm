@@ -1,5 +1,13 @@
-{
-   int x = 5
-   int 1x = 3
-   list<string> hihi123 = ["ab", "cd"]
+import fun1 from "file1.djm"
+
+int MAX = 10
+
+fun main() -> int {
+   return MAX
 }
+
+/*
+class User {
+   name: string
+}
+*/
