@@ -24,6 +24,7 @@ public:
 
 private:
    //Lexer& lexer_;
+   static NullErrorHandler nullHandler_;
    TokenSource& tokenSource_;
 
    Token current_;

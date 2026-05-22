@@ -12,7 +12,7 @@ public:
 
    explicit ErrorHandler(std::string sourceCode);
 
-   void report(
+   virtual void report(
       ErrorType type,
       const std::string& message,
       const SourceLocation& location
@@ -31,4 +31,10 @@ private:
 
    std::string getLine(int lineNumber) const;
    void printSourceSnippet(std::ostream& out, const SourceLocation& location) const;
+};
+
+
+class NullErrorHandler : public ErrorHandler {
+public:
+   void report(ErrorType, const std::string&, const SourceLocation&) override {}
 };

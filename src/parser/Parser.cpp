@@ -9,12 +9,20 @@
 
 #include <variant>
 
+NullErrorHandler Parser::nullHandler_{};
+
 Parser::Parser(TokenSource& tokenSource, ErrorHandler* errorHandler)
    : tokenSource_(tokenSource),
      current_(makeToken(TokenType::EndOfFile, "", SourceLocation{})),
      next_(makeToken(TokenType::EndOfFile, "", SourceLocation{})),
      previous_(makeToken(TokenType::EndOfFile, "", SourceLocation{})),
      errorHandler_(errorHandler) {
+
+   if (errorHandler == nullptr) {
+      errorHandler_ = &nullHandler_;
+   } else {
+      errorHandler_ = errorHandler;
+   }
    current_ = tokenSource_.nextToken();
    next_ = tokenSource_.nextToken();
 }
@@ -25,13 +33,11 @@ void Parser::advance() {
    next_ = tokenSource_.nextToken();
 
    if (current_.type() == TokenType::Invalid) {
-      if (errorHandler_ != nullptr) {
-         errorHandler_->report(
-            ErrorType::Lexical,
-            "invalid token: " + current_.lexeme(),
-            current_.location()
-         );
-      }
+      errorHandler_->report(
+         ErrorType::Lexical,
+         "invalid token: " + current_.lexeme(),
+         current_.location()
+      );
 
       throw ParseError();
    }
@@ -58,9 +64,8 @@ bool Parser::match(TokenType type) {
 // bo nadpisano previous_ po consume() a przed std::get
 Token Parser::consume(TokenType type, const std::string& message) {
    if (!check(type)) {
-      if (errorHandler_ != nullptr) {
-         errorHandler_->report(ErrorType::Parser, message, current_.location());
-      }
+      errorHandler_->report(ErrorType::Parser, message, current_.location());
+
 
       //throw std::runtime_error(message);
       throw ParseError();
@@ -80,13 +85,11 @@ void Parser::consumeStatementEnd() {
       return;
    }
 
-   if (errorHandler_ != nullptr) {
-      errorHandler_->report(
-         ErrorType::Parser,
-         "expected end of statement",
-         current_.location()
-      );
-   }
+   errorHandler_->report(
+      ErrorType::Parser,
+      "expected end of statement",
+      current_.location()
+   );
 
    //throw std::runtime_error("expected end of statement");
 }
@@ -175,10 +178,8 @@ std::unique_ptr<TypeNode> Parser::parseValueType() {
    }
 
 
-   if (errorHandler_ != nullptr) {
-      errorHandler_->report(ErrorType::Parser, "expected value type",
-                                                   current_.location());
-   }
+   errorHandler_->report(ErrorType::Parser, "expected value type",
+                                                current_.location());
 
    throw ParseError();
 }
@@ -698,13 +699,11 @@ ExprPtr Parser::parsePrimaryExpression() {
       return expression;
    }
 
-   if (errorHandler_ != nullptr) {
-      errorHandler_->report(
-         ErrorType::Parser,
-         "expected expression",
-         current_.location()
-      );
-   }
+   errorHandler_->report(
+      ErrorType::Parser,
+      "expected expression",
+      current_.location()
+   );
 
    throw ParseError();
 }
@@ -885,13 +884,11 @@ StmtPtr Parser::parseExpressionOrAssignmentStatement() {
 
    if (match(TokenType::Assign)) {
       if (!isAssignable(*left)) {
-         if (errorHandler_ != nullptr) {
-            errorHandler_->report(
-               ErrorType::Parser,
-               "left side of assignment is not assignable",
-               left->location()
-            );
-         }
+         errorHandler_->report(
+            ErrorType::Parser,
+            "left side of assignment is not assignable",
+            left->location()
+         );
 
          throw std::runtime_error("left side of assignment is not assignable");
       }
@@ -1025,13 +1022,11 @@ DeclPtr Parser::parseTopLevelDeclaration() {
       return parseGlobalConstantDeclaration();
    }
 
-   if (errorHandler_ != nullptr) {
-      errorHandler_->report(
-         ErrorType::Parser,
-         "expected top-level declaration",
-         current_.location()
-      );
-   }
+   errorHandler_->report(
+      ErrorType::Parser,
+      "expected top-level declaration",
+      current_.location()
+   );
 
    throw ParseError();
 }
@@ -1260,13 +1255,11 @@ ClassMemberPtr Parser::parseClassMember(const std::string& className) {
       return parseIdentifierStartedClassMember(className);
    }
 
-   if (errorHandler_ != nullptr) {
-      errorHandler_->report(
-         ErrorType::Parser,
-         "expected class member",
-         current_.location()
-      );
-   }
+   errorHandler_->report(
+      ErrorType::Parser,
+      "expected class member",
+      current_.location()
+   );
 
    throw ParseError();
 }
@@ -1360,13 +1353,11 @@ ClassMemberPtr Parser::parseIdentifierStartedClassMember(
       );
    }
 
-   if (errorHandler_ != nullptr) {
-      errorHandler_->report(
-         ErrorType::Parser,
-         "expected '(' or ':' after identifier in class member",
-         current_.location()
-      );
-   }
+   errorHandler_->report(
+      ErrorType::Parser,
+      "expected '(' or ':' after identifier in class member",
+      current_.location()
+   );
 
    throw ParseError();
 }
@@ -1380,13 +1371,11 @@ ConstructorDeclarationPtr Parser::parseConstructorAfterName(
    // nie jest w kwestii parsera - azkolwiek można by było w gramatyce wprowadzić
    // słowo kluczowe 'constructor', wtedy by zdecydowanie było
    if (nameToken.lexeme() != className) {
-      if (errorHandler_ != nullptr) {
-         errorHandler_->report(
-            ErrorType::Parser,
-            "constructor name must match class name",
-            nameToken.location()
-         );
-      }
+      errorHandler_->report(
+         ErrorType::Parser,
+         "constructor name must match class name",
+         nameToken.location()
+      );
 
       throw ParseError();
    }
