@@ -739,12 +739,12 @@ StmtPtr Parser::parseStatement() {
          return nullptr;
       }
 
-      if (check(TokenType::LBrace)) {
-         return parseBlockStatement();
+      if (auto statement = tryParseBlockStatement()) {
+         return statement;
       }
 
-      if (check(TokenType::KwReturn)) {
-         return parseReturnStatement();
+      if (auto statement = tryParseReturnStatement()) {
+         return statement;
       }
 
       if (looksLikeVariableDeclaration()) {
@@ -793,7 +793,11 @@ std::unique_ptr<BlockStatement> Parser::parseBlock() {
    );
 }
 
-StmtPtr Parser::parseBlockStatement() {
+StmtPtr Parser::tryParseBlockStatement() {
+   if (!check(TokenType::LBrace)) {
+      return nullptr;
+   }
+
    return parseBlock();
 }
 
@@ -949,11 +953,14 @@ bool Parser::isAssignable(const Expression& expression) const {
    return false;
 }
 
-StmtPtr Parser::parseReturnStatement() {
+StmtPtr Parser::tryParseReturnStatement() {
+   if (!check(TokenType::KwReturn)) {
+      return nullptr;
+   }
+
    SourceLocation location = current_.location();
 
    consume(TokenType::KwReturn, "expected 'return'");
-
    ExprPtr expression = nullptr;
 
    if (!check(TokenType::Newline) &&
@@ -977,8 +984,8 @@ ProgramPtr Parser::parseProgram() {
 
    std::vector<ImportDeclPtr> imports;
 
-   while (check(TokenType::KwImport)) {
-      imports.push_back(parseImportDeclaration());
+   while (auto declaration = parseImportDeclaration()) {
+      imports.push_back(std::move(declaration));
       skipNewlines();
    }
 
@@ -1003,23 +1010,16 @@ ProgramPtr Parser::parseProgram() {
 }
 
 DeclPtr Parser::parseTopLevelDeclaration() {
-   if (check(TokenType::KwClass)) {
-      return parseClassDeclaration();
+   if (auto declaration = tryParseClassDeclaration()) {
+      return declaration;
    }
 
-   if (check(TokenType::KwFun)) {
-      return parseFunctionDeclaration();
+   if (auto declaration = tryParseFunctionDeclaration()) {
+      return declaration;
    }
 
-   // Tu można pomyśleć, żeby zwracało błąd, jeśli
-   // wykryje mut, ale pewnie wtedy należałoby użyć
-   // w metodzie parseGlobalConstantDeclaration
-   // VariableDeclarationStatement
-   // zamiast GlobalCOnstantDeclaration (tego zupełnie się pozbyć)
-
-   // Jednak zwrócenie Error msg = "expected top-level declaration"też jest okej (chyba)
-   if (isValueTypeStart()) {
-      return parseGlobalConstantDeclaration();
+   if (auto declaration = tryParseGlobalConstantDeclaration()) {
+      return declaration;
    }
 
    errorHandler_->report(
@@ -1032,6 +1032,10 @@ DeclPtr Parser::parseTopLevelDeclaration() {
 }
 
 ImportDeclPtr Parser::parseImportDeclaration() {
+   if (!check(TokenType::KwImport)) {
+      return nullptr;
+   }
+
    SourceLocation location = current_.location();
 
    consume(TokenType::KwImport, "expected 'import'");
@@ -1107,10 +1111,12 @@ std::vector<ParameterNode> Parser::parseParameterList() {
    return parameters;
 }
 
-FunctionDeclPtr Parser::parseFunctionDeclaration() {
-   SourceLocation location = current_.location();
+FunctionDeclPtr Parser::tryParseFunctionDeclaration() {
+   if (!match(TokenType::KwFun)) {
+      return nullptr;
+   }
 
-   consume(TokenType::KwFun, "expected 'fun'");
+   SourceLocation location = previous_.location();
 
    const Token& nameToken = consume(
       TokenType::Identifier,
@@ -1147,7 +1153,11 @@ FunctionDeclPtr Parser::parseFunctionDeclaration() {
 // jeśli zrobić oddzielnie, to łatwiej byłoby wprowadzić zmianę
 // gramatyki polegającą na obowiązkowym inicjalizowaniu stałej globalnej wartością
 // (bo inaczej po co w ogóle ją deklarować, żeby trzymała domyślną?)
-GlobalConstDeclPtr Parser::parseGlobalConstantDeclaration() {
+GlobalConstDeclPtr Parser::tryParseGlobalConstantDeclaration() {
+   if (!isValueTypeStart()) {
+      return nullptr;
+   }
+
    SourceLocation location = current_.location();
 
    auto type = parseValueType();
@@ -1192,9 +1202,12 @@ GlobalConstDeclPtr Parser::parseGlobalConstantDeclaration() {
    );
 }
 
-ClassDeclPtr Parser::parseClassDeclaration() {
-   SourceLocation location = current_.location();
+ClassDeclPtr Parser::tryParseClassDeclaration() {
+   if (!check(TokenType::KwClass)) {
+      return nullptr;
+   }
 
+   SourceLocation location = current_.location();
    consume(TokenType::KwClass, "expected 'class'");
 
    const Token& nameToken = consume(
@@ -1309,7 +1322,7 @@ std::unique_ptr<MethodDeclaration> Parser::parseMethodAfterModifier(
    MethodModifier modifier,
    SourceLocation location
 ) {
-   auto function = parseFunctionDeclaration();
+   auto function = tryParseFunctionDeclaration();
 
    return std::make_unique<MethodDeclaration>(
       location,

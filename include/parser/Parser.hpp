@@ -76,14 +76,14 @@ private:
 
    StmtPtr parseExpressionOrAssignmentStatement();
    
-   StmtPtr parseReturnStatement();
+   StmtPtr tryParseReturnStatement();
    StmtPtr parseVariableDeclarationStatement();
 
    DeclPtr parseTopLevelDeclaration();
 
    ImportDeclPtr parseImportDeclaration();
 
-   GlobalConstDeclPtr parseGlobalConstantDeclaration();
+   GlobalConstDeclPtr tryParseGlobalConstantDeclaration();
 
    std::vector<ParameterNode> parseParameterList();
    ParameterNode parseParameter();
@@ -118,10 +118,10 @@ private:
    );
 
    StmtPtr parseStatement();
-   StmtPtr parseBlockStatement();
+   StmtPtr tryParseBlockStatement();
 
-   FunctionDeclPtr parseFunctionDeclaration();
-   ClassDeclPtr parseClassDeclaration();
+   FunctionDeclPtr tryParseFunctionDeclaration();
+   ClassDeclPtr tryParseClassDeclaration();
 };
 
 class ParseError : public std::runtime_error {
