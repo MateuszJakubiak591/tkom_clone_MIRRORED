@@ -12,7 +12,7 @@ void ErrorHandler::report(
    const std::string& message,
    const SourceLocation& location
 ) {
-   errors_.emplace_back(type, message, location);
+   errors_.push_back(Error{type, message, location});
 }
 
 bool ErrorHandler::hasErrors() const {
