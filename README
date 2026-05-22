@@ -1,0 +1,11 @@
+1. W celu zbudowania obrazu dockerowego należy użyć komendy:
+###### docker build -t djm-interpreter . ######
+
+
+2. W celu uruchomienia kontenera (domyślnie uruchamiającego testy)
+   należy użyć komendy:s
+###### docker run --rm djm-interpreter   ######
+
+
+3. Aby uruchomić lekser na pliku program.djm należy użyć komendy:
+###### docker run --rm djm-interpreter ./build/djm ./src/program.djm ######
