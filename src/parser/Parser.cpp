@@ -973,7 +973,7 @@ StmtPtr Parser::parseReturnStatement() {
    );
 }
 
-std::unique_ptr<Program> Parser::parseProgram() {
+ProgramPtr Parser::parseProgram() {
    SourceLocation location = current_.location();
 
    skipNewlines();
@@ -1112,7 +1112,7 @@ std::vector<ParameterNode> Parser::parseParameterList() {
    return parameters;
 }
 
-std::unique_ptr<FunctionDeclaration> Parser::parseFunctionDeclaration() {
+FunctionDeclPtr Parser::parseFunctionDeclaration() {
    SourceLocation location = current_.location();
 
    consume(TokenType::KwFun, "expected 'fun'");
@@ -1152,7 +1152,7 @@ std::unique_ptr<FunctionDeclaration> Parser::parseFunctionDeclaration() {
 // jeśli zrobić oddzielnie, to łatwiej byłoby wprowadzić zmianę
 // gramatyki polegającą na obowiązkowym inicjalizowaniu stałej globalnej wartością
 // (bo inaczej po co w ogóle ją deklarować, żeby trzymała domyślną?)
-std::unique_ptr<GlobalConstantDeclaration> Parser::parseGlobalConstantDeclaration() {
+GlobalConstDeclPtr Parser::parseGlobalConstantDeclaration() {
    SourceLocation location = current_.location();
 
    auto type = parseValueType();
@@ -1197,7 +1197,7 @@ std::unique_ptr<GlobalConstantDeclaration> Parser::parseGlobalConstantDeclaratio
    );
 }
 
-std::unique_ptr<ClassDeclaration> Parser::parseClassDeclaration() {
+ClassDeclPtr Parser::parseClassDeclaration() {
    SourceLocation location = current_.location();
 
    consume(TokenType::KwClass, "expected 'class'");
@@ -1371,7 +1371,7 @@ ClassMemberPtr Parser::parseIdentifierStartedClassMember(
    throw ParseError();
 }
 
-std::unique_ptr<ConstructorDeclaration> Parser::parseConstructorAfterName(
+ConstructorDeclarationPtr Parser::parseConstructorAfterName(
    const std::string& className,
    const Token& nameToken
 ) {

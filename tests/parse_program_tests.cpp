@@ -14,7 +14,7 @@
 
 namespace {
 
-std::unique_ptr<Program> parseProgramFromString(const std::string& code) {
+ProgramPtr parseProgramFromString(const std::string& code) {
    StringSource source("test.djm", code);
    Lexer lexer(source);
    Parser parser(lexer);
@@ -23,7 +23,7 @@ std::unique_ptr<Program> parseProgramFromString(const std::string& code) {
 }
 
 struct ParseResult {
-   std::unique_ptr<Program> program;
+   ProgramPtr program;
    ErrorHandler errorHandler;
 };
 

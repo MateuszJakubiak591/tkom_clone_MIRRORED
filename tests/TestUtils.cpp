@@ -111,7 +111,7 @@ void assertNoInvalidTokens(const std::vector<Token>& tokens) {
 // Nie jest to najbardziej eleganckie rozwiązanie, bo testowanie pojedyncznych
 // statementów jest zależne od tego, czy działa parsowanie funkcji, ale tak by
 // należało postąpić, jeśli parseStatement miałoby być prywatne
-std::unique_ptr<Program> parseString(
+ProgramPtr parseString(
    const std::string& statementCode,
    ErrorHandler* errHandler
 ) {

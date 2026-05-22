@@ -64,6 +64,7 @@ private:
    std::unique_ptr<BlockStatement> body_;
 };
 
+using FunctionDeclPtr = std::unique_ptr<FunctionDeclaration>;
 // Różni się od VariableDeclarationStatement jedynie brakiem
 // możliwości mut (mutowalności), można by wyciągnąć
 // wspólną część klasy GlobalConstantDeclaration i VariableDeclarationStatement
@@ -98,6 +99,8 @@ private:
    std::vector<VariableDeclarator> names_;
    ExprPtr initializer_;
 };
+
+using GlobalConstDeclPtr = std::unique_ptr<GlobalConstantDeclaration>;
 
 class ClassMember : public Node {
 public:
@@ -180,6 +183,8 @@ private:
    std::unique_ptr<FunctionDeclaration> function_;
 };
 
+using MethodDeclarationPtr = std::unique_ptr<MethodDeclaration>;
+
 class ConstructorDeclaration final : public ClassMember {
 public:
    ConstructorDeclaration(
@@ -211,6 +216,8 @@ private:
    std::unique_ptr<BlockStatement> body_;
 };
 
+using ConstructorDeclarationPtr = std::unique_ptr<ConstructorDeclaration>;
+
 class ClassDeclaration final : public Declaration {
 public:
    ClassDeclaration(
@@ -234,6 +241,8 @@ private:
    std::string name_;
    std::vector<ClassMemberPtr> members_;
 };
+
+using ClassDeclPtr = std::unique_ptr<ClassDeclaration>;
 
 class ImportDeclaration final : public Node {
 public:
@@ -291,3 +300,5 @@ private:
    std::vector<ImportDeclPtr> imports_;
    std::vector<DeclPtr> declarations_;
 };
+
+using ProgramPtr = std::unique_ptr<Program>;

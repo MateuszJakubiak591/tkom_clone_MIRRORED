@@ -19,7 +19,7 @@ class Parser {
 public:
    explicit Parser(TokenSource& tokenSource, ErrorHandler* errorHandler = nullptr);
 
-   std::unique_ptr<Program> parseProgram();
+   ProgramPtr parseProgram();
 
 
 private:
@@ -82,7 +82,7 @@ private:
 
    ImportDeclPtr parseImportDeclaration();
 
-   std::unique_ptr<GlobalConstantDeclaration> parseGlobalConstantDeclaration();
+   GlobalConstDeclPtr parseGlobalConstantDeclaration();
 
    std::vector<ParameterNode> parseParameterList();
    ParameterNode parseParameter();
@@ -106,12 +106,12 @@ private:
       const Token& firstName
    );
 
-   std::unique_ptr<MethodDeclaration> parseMethodAfterModifier(
+   MethodDeclarationPtr parseMethodAfterModifier(
       MethodModifier modifier,
       SourceLocation location
    );
 
-   std::unique_ptr<ConstructorDeclaration> parseConstructorAfterName(
+   ConstructorDeclarationPtr parseConstructorAfterName(
       const std::string& className,
       const Token& nameToken
    );
@@ -119,8 +119,8 @@ private:
    StmtPtr parseStatement();
    StmtPtr parseBlockStatement();
 
-   std::unique_ptr<FunctionDeclaration> parseFunctionDeclaration();
-   std::unique_ptr<ClassDeclaration> parseClassDeclaration();
+   FunctionDeclPtr parseFunctionDeclaration();
+   ClassDeclPtr parseClassDeclaration();
 };
 
 class ParseError : public std::runtime_error {
