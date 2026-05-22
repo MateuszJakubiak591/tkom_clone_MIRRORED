@@ -19,13 +19,8 @@ class Parser {
 public:
    explicit Parser(TokenSource& tokenSource, ErrorHandler* errorHandler = nullptr);
 
-   ExprPtr parseExpression();
-   StmtPtr parseStatement();
-   StmtPtr parseBlockStatement();
-
    std::unique_ptr<Program> parseProgram();
-   std::unique_ptr<FunctionDeclaration> parseFunctionDeclaration();
-   std::unique_ptr<ClassDeclaration> parseClassDeclaration();
+
 
 private:
    //Lexer& lexer_;
@@ -94,6 +89,8 @@ private:
 
    std::unique_ptr<BlockStatement> parseBlock();
 
+   ExprPtr parseExpression();
+
    ClassMemberPtr parseClassMember(const std::string& className);
    ClassMemberPtr parseIdentifierStartedClassMember(const std::string& className);
    ClassMemberPtr parseStaticClassMember();
@@ -119,7 +116,11 @@ private:
       const Token& nameToken
    );
 
+   StmtPtr parseStatement();
+   StmtPtr parseBlockStatement();
 
+   std::unique_ptr<FunctionDeclaration> parseFunctionDeclaration();
+   std::unique_ptr<ClassDeclaration> parseClassDeclaration();
 };
 
 class ParseError : public std::runtime_error {

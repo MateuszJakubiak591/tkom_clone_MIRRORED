@@ -108,10 +108,51 @@ void assertNoInvalidTokens(const std::vector<Token>& tokens) {
    }
 }
 
-StmtPtr parseString(const std::string& code, ErrorHandler* errHandler) {
-   auto source = std::make_unique<StringSource>("test.djm", code);
-   Lexer lexer(*source);
+// Nie jest to najbardziej eleganckie rozwiązanie, bo testowanie pojedyncznych
+// statementów jest zależne od tego, czy działa parsowanie funkcji, ale tak by
+// należało postąpić, jeśli parseStatement miałoby być prywatne
+std::unique_ptr<Program> parseString(
+   const std::string& statementCode,
+   ErrorHandler* errHandler
+) {
+   std::string code = "fun main() -> void {\n";
+   code += statementCode;
+
+   if (code.empty() || code.back() != '\n') {
+      code += '\n';
+   }
+
+   code += "}\n";
+
+   StringSource source("test.djm", code);
+   Lexer lexer(source);
    Parser parser(lexer, errHandler);
-   
-   return parser.parseStatement();
+
+   return parser.parseProgram();
+}
+
+Statement* firstStatement(Program* program) {
+   if (program == nullptr) {
+      return nullptr;
+   }
+
+   if (program->declarations().empty()) {
+      return nullptr;
+   }
+
+   auto* function = dynamic_cast<FunctionDeclaration*>(
+      program->declarations()[0].get()
+   );
+
+   if (function == nullptr) {
+      return nullptr;
+   }
+
+   const auto& statements = function->body().statements();
+
+   if (statements.empty()) {
+      return nullptr;
+   }
+
+   return statements[0].get();
 }

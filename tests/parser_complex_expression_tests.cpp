@@ -15,12 +15,55 @@
 
 namespace {
 
-ExprPtr parseExpressionFromString(const std::string& code, ErrorHandler& errorHandler) {
+// Nie jest to nadmiernie eleganckie, ale umożliwia w miarę prosto
+// zmienić testy przy przeniesieniu parseExpression do private
+// struktura ParsedEpxression poniżej trzyma program przy życiu
+// do końca każdego z testów
+struct ParsedExpression {
+   std::unique_ptr<Program> program;
+   const Expression* expression;
+};
+
+ParsedExpression parseExpressionFromString(
+   const std::string& expressionCode,
+   ErrorHandler& errorHandler
+) {
+   std::string code =
+      "fun main() -> void {\n" +
+      expressionCode +
+      "\n}\n";
+
    StringSource source("test.djm", code);
    Lexer lexer(source);
    Parser parser(lexer, &errorHandler);
 
-   return parser.parseExpression();
+   auto program = parser.parseProgram();
+
+   if (program == nullptr || program->declarations().empty()) {
+      return {std::move(program), nullptr};
+   }
+
+   const auto* function = dynamic_cast<const FunctionDeclaration*>(
+      program->declarations()[0].get()
+   );
+
+   if (function == nullptr || function->body().statements().empty()) {
+      return {std::move(program), nullptr};
+   }
+
+   const auto* expressionStatement =
+      dynamic_cast<const ExpressionStatement*>(
+         function->body().statements()[0].get()
+      );
+
+   if (expressionStatement == nullptr) {
+      return {std::move(program), nullptr};
+   }
+
+   return {
+      std::move(program),
+      &expressionStatement->expression()
+   };
 }
 
 const IdentifierExpression* asIdentifier(const Expression& expression) {
@@ -44,15 +87,15 @@ const MemberAccessExpression* asMemberAccess(const Expression& expression) {
 TEST(ParserComplexExpressionTests, ParsesCountFilterMapCallExpression) {
    ErrorHandler errorHandler;
 
-   auto expression = parseExpressionFromString(
+   auto parsed = parseExpressionFromString(
       "count ((users ? (this.age > 18 && this.isActive)) |> toThePowerOf(this.age, 2))",
       errorHandler
    );
 
    ASSERT_FALSE(errorHandler.hasErrors());
-   ASSERT_NE(expression, nullptr);
+   ASSERT_NE(parsed.expression, nullptr);
 
-   const auto* count = dynamic_cast<const CountExpression*>(expression.get());
+   const auto* count = dynamic_cast<const CountExpression*>(parsed.expression);
    ASSERT_NE(count, nullptr);
 
    const auto* map = dynamic_cast<const MapExpression*>(&count->operand());
@@ -118,15 +161,15 @@ TEST(ParserComplexExpressionTests, ParsesCountFilterMapCallExpression) {
 TEST(ParserComplexExpressionTests, ParsesCountOfListIntersectionComparison) {
    ErrorHandler errorHandler;
 
-   auto expression = parseExpressionFromString(
+   auto parsed = parseExpressionFromString(
       "count (list1 * list2) > 0",
       errorHandler
    );
 
    ASSERT_FALSE(errorHandler.hasErrors());
-   ASSERT_NE(expression, nullptr);
+   ASSERT_NE(parsed.expression, nullptr);
 
-   const auto* greater = dynamic_cast<const GreaterExpression*>(expression.get());
+   const auto* greater = dynamic_cast<const GreaterExpression*>(parsed.expression);
    ASSERT_NE(greater, nullptr);
 
    const auto* count = dynamic_cast<const CountExpression*>(&greater->left());
@@ -151,15 +194,15 @@ TEST(ParserComplexExpressionTests, ParsesCountOfListIntersectionComparison) {
 TEST(ParserComplexExpressionTests, ParsesReverseFlattenExpression) {
    ErrorHandler errorHandler;
 
-   auto expression = parseExpressionFromString(
+   auto parsed = parseExpressionFromString(
       "reverse flatten nested",
       errorHandler
    );
 
    ASSERT_FALSE(errorHandler.hasErrors());
-   ASSERT_NE(expression, nullptr);
+   ASSERT_NE(parsed.expression, nullptr);
 
-   const auto* reverse = dynamic_cast<const ReverseExpression*>(expression.get());
+   const auto* reverse = dynamic_cast<const ReverseExpression*>(parsed.expression);
    ASSERT_NE(reverse, nullptr);
 
    const auto* flatten = dynamic_cast<const FlattenExpression*>(&reverse->operand());

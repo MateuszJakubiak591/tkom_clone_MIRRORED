@@ -7,12 +7,16 @@ TEST(ParserSimpleTests, ParseImmutableVariableWithoutInitializer) {
    std::string code = "string name\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
    EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* varDecl = dynamic_cast<VariableDeclarationStatement*>(stmt.get());
+   auto* varDecl = dynamic_cast<VariableDeclarationStatement*>(stmt);
+
    ASSERT_NE(varDecl, nullptr);
    EXPECT_FALSE(varDecl->isMutable());
    EXPECT_EQ(varDecl->initializer(), nullptr);
@@ -26,12 +30,15 @@ TEST(ParserSimpleTests, ParseVariableDeclarationWithListType) {
    std::string code = "list<int> numbers = [1, 2]\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
    EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* varDecl = dynamic_cast<VariableDeclarationStatement*>(stmt.get());
+   auto* varDecl = dynamic_cast<VariableDeclarationStatement*>(stmt);
    ASSERT_NE(varDecl, nullptr);
 
    auto* listType = dynamic_cast<const ListTypeNode*>(&varDecl->type());
@@ -49,12 +56,15 @@ TEST(ParserSimpleTests, ParseAssignmentStatement) {
    std::string code = "counter = 10\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
    EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* assignStmt = dynamic_cast<AssignmentStatement*>(stmt.get());
+   auto* assignStmt = dynamic_cast<AssignmentStatement*>(stmt);
    ASSERT_NE(assignStmt, nullptr);
 
    auto* idExpr = dynamic_cast<const IdentifierExpression*>(&assignStmt->target());
@@ -70,12 +80,15 @@ TEST(ParserSimpleTests, ParseVariableDeclaration) {
    std::string code = "mut int x = 25\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
    EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* varDecl = dynamic_cast<VariableDeclarationStatement*>(stmt.get());
+   auto* varDecl = dynamic_cast<VariableDeclarationStatement*>(stmt);
    ASSERT_NE(varDecl, nullptr);
 
    EXPECT_TRUE(varDecl->isMutable());
@@ -96,12 +109,15 @@ TEST(ParserSimpleTests, ParsePipelineMapExpression) {
    std::string code = "data |> transform\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
    EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt);
    auto* mapExpr = dynamic_cast<const MapExpression*>(&exprStmt->expression());
    ASSERT_NE(mapExpr, nullptr);
    
@@ -116,12 +132,15 @@ TEST(ParserSimpleTests, ParseUserDefinedTypeWithConstructorCall) {
    std::string code = "mut User user = User()\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
-   EXPECT_FALSE(errHandler.hasErrors()) << "Parser zaszalał i zgłosił błędy!";
+   EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* varDecl = dynamic_cast<VariableDeclarationStatement*>(stmt.get());
+   auto* varDecl = dynamic_cast<VariableDeclarationStatement*>(stmt);
    ASSERT_NE(varDecl, nullptr) << "Węzeł główny to nie VariableDeclarationStatement!";
 
    EXPECT_TRUE(varDecl->isMutable());
@@ -148,12 +167,15 @@ TEST(ParserSimpleTests, ParseSimpleAddExpression) {
    std::string code = "5 + x\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
    EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt);
    ASSERT_NE(exprStmt, nullptr);
 
    auto* addExpr = dynamic_cast<const AddExpression*>(&exprStmt->expression());
@@ -172,12 +194,15 @@ TEST(ParserSimpleTests, ParseOperatorMulBeforeAdd) {
    std::string code = "2 + 3 * 4\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
    EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt);
    auto* mainAdd = dynamic_cast<const AddExpression*>(&exprStmt->expression());
    ASSERT_NE(mainAdd, nullptr);
 
@@ -193,12 +218,15 @@ TEST(ParserSimpleTests, ParseRightAssociativePowerExpression) {
    std::string code = "2 ^ 3 ^ 4\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
    EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt);
    auto* mainPower = dynamic_cast<const PowerExpression*>(&exprStmt->expression());
    ASSERT_NE(mainPower, nullptr);
 
@@ -217,12 +245,15 @@ TEST(ParserSimpleTests, ParseUnaryNotAndNegate) {
    std::string code = "!-true\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
    EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt);
    auto* notExpr = dynamic_cast<const NotExpression*>(&exprStmt->expression());
    ASSERT_NE(notExpr, nullptr);
 
@@ -238,12 +269,15 @@ TEST(ParserSimpleTests, ParseCastExpression) {
    std::string code = "x as float\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
    EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt);
    auto* castExpr = dynamic_cast<const CastExpression*>(&exprStmt->expression());
    ASSERT_NE(castExpr, nullptr);
 
@@ -259,12 +293,15 @@ TEST(ParserSimpleTests, ParseChainedMemberAccessAndCall) {
    std::string code = "user.getName()\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
    EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt);
 
    auto* callExpr = dynamic_cast<const CallExpression*>(&exprStmt->expression());
    ASSERT_NE(callExpr, nullptr);
@@ -282,12 +319,15 @@ TEST(ParserSimpleTests, ParseIndexAndSliceExpression) {
    std::string code = "matrix[1:5]\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
    EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt.get());
+   auto* exprStmt = dynamic_cast<ExpressionStatement*>(stmt);
    auto* sliceExpr = dynamic_cast<const SliceExpression*>(&exprStmt->expression());
    ASSERT_NE(sliceExpr, nullptr);
 
@@ -304,12 +344,15 @@ TEST(ParserSimpleTests, ParseReturnStatementWithValue) {
    std::string code = "return 0\n";
    ErrorHandler errHandler("");
 
-   StmtPtr stmt = parseString(code, &errHandler);
+   auto program = parseString(code, &errHandler);
 
    EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
    ASSERT_NE(stmt, nullptr);
 
-   auto* retStmt = dynamic_cast<ReturnStatement*>(stmt.get());
+   auto* retStmt = dynamic_cast<ReturnStatement*>(stmt);
    ASSERT_NE(retStmt, nullptr);
 
    ASSERT_NE(retStmt->expression(), nullptr);

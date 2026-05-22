@@ -34,4 +34,9 @@ void assertToken(
 
 void assertNoInvalidTokens(const std::vector<Token>& tokens);
 
-StmtPtr parseString(const std::string& code, ErrorHandler* errHandler = nullptr);
+std::unique_ptr<Program> parseString(
+   const std::string& code,
+   ErrorHandler* errHandler = nullptr
+);
+
+Statement* firstStatement(Program* program);

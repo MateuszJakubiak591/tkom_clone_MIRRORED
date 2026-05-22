@@ -50,18 +50,6 @@ std::unique_ptr<Program> parseProgramFromTokens(
    return parser.parseProgram();
 }
 
-ExprPtr parseExpressionFromTokens(
-   std::vector<Token> tokens,
-   ErrorHandler& errorHandler
-) {
-   tokens.push_back(makeToken(TokenType::EndOfFile, "", loc()));
-
-   VectorTokenSource tokenSource(std::move(tokens));
-   Parser parser(tokenSource, &errorHandler);
-
-   return parser.parseExpression();
-}
-
 const FunctionDeclaration* asFunction(const DeclPtr& declaration) {
    return dynamic_cast<const FunctionDeclaration*>(declaration.get());
 }
@@ -89,21 +77,47 @@ const ConstructorDeclaration* asConstructor(const ClassMemberPtr& member) {
 TEST(ParserUnitExpressionTests, ParsesAdditiveAndMultiplicativePrecedence) {
    ErrorHandler errorHandler;
 
-   auto expression = parseExpressionFromTokens(
+   auto program = parseProgramFromTokens(
       {
+         makeToken(TokenType::KwFun, "fun", loc(1, 1)),
+         makeToken(TokenType::Identifier, "main", loc(1, 5)),
+         makeToken(TokenType::LParen, "(", loc(1, 9)),
+         makeToken(TokenType::RParen, ")", loc(1, 10)),
+         makeToken(TokenType::Arrow, "->", loc(1, 12)),
+         makeToken(TokenType::KwInt, "int", loc(1, 15)),
+         makeToken(TokenType::LBrace, "{", loc(1, 19)),
+         makeToken(TokenType::Newline, "\\n", loc(1, 20)),
+
          makeToken(TokenType::Identifier, "a", loc(1, 1)),
          makeToken(TokenType::Plus, "+", loc(1, 3)),
          makeToken(TokenType::Identifier, "b", loc(1, 5)),
          makeToken(TokenType::Multiply, "*", loc(1, 7)),
          makeToken(TokenType::Identifier, "c", loc(1, 9)),
+
+         makeToken(TokenType::RBrace, "}", loc(3, 1)),
+         makeToken(TokenType::Newline, "\\n", loc(3, 2)),
       },
       errorHandler
    );
 
    ASSERT_FALSE(errorHandler.hasErrors());
-   ASSERT_NE(expression, nullptr);
+   ASSERT_NE(program, nullptr);
 
-   const auto* add = dynamic_cast<const AddExpression*>(expression.get());
+   ASSERT_EQ(program->declarations().size(), 1);
+
+   const FunctionDeclaration* function = asFunction(program->declarations()[0]);
+   ASSERT_NE(function, nullptr);
+
+   const auto& statements = function->body().statements();
+
+   ASSERT_EQ(statements.size(), 1);
+
+   const auto* exprStmt =
+      dynamic_cast<const ExpressionStatement*>(
+         statements[0].get()
+      );
+
+   const auto* add = dynamic_cast<const AddExpression*>(&exprStmt->expression());
    ASSERT_NE(add, nullptr);
 
    const auto* left = dynamic_cast<const IdentifierExpression*>(&add->left());
@@ -127,25 +141,55 @@ TEST(ParserUnitExpressionTests, ParsesAdditiveAndMultiplicativePrecedence) {
 }
 
 //user.getName()
-TEST(ParserUnitExpressionTests, ParsesMethodCallShape) {
+TEST(ParserUnitProgramTests, ParsesMethodCall) {
    ErrorHandler errorHandler;
 
-   auto expression = parseExpressionFromTokens(
+   auto program = parseProgramFromTokens(
       {
+         makeToken(TokenType::KwFun, "fun", loc(1, 1)),
+         makeToken(TokenType::Identifier, "main", loc(1, 5)),
+         makeToken(TokenType::LParen, "(", loc(1, 9)),
+         makeToken(TokenType::RParen, ")", loc(1, 10)),
+         makeToken(TokenType::Arrow, "->", loc(1, 12)),
+         makeToken(TokenType::KwInt, "int", loc(1, 15)),
+         makeToken(TokenType::LBrace, "{", loc(1, 19)),
+         makeToken(TokenType::Newline, "\\n", loc(1, 20)),
+
          makeToken(TokenType::Identifier, "user", loc(1, 1)),
          makeToken(TokenType::Dot, ".", loc(1, 5)),
          makeToken(TokenType::Identifier, "getName", loc(1, 6)),
          makeToken(TokenType::LParen, "(", loc(1, 13)),
          makeToken(TokenType::RParen, ")", loc(1, 14)),
+
+         makeToken(TokenType::RBrace, "}", loc(3, 1)),
+         makeToken(TokenType::Newline, "\\n", loc(3, 2)),
       },
       errorHandler
    );
 
    ASSERT_FALSE(errorHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
 
-   const auto* call = dynamic_cast<const CallExpression*>(expression.get());
-   ASSERT_NE(call, nullptr);
-   EXPECT_TRUE(call->arguments().empty());
+   ASSERT_EQ(program->declarations().size(), 1);
+
+   const FunctionDeclaration* function = asFunction(program->declarations()[0]);
+   ASSERT_NE(function, nullptr);
+
+   const auto& statements = function->body().statements();
+
+   ASSERT_EQ(statements.size(), 1);
+
+   const auto* exprStmt =
+      dynamic_cast<const ExpressionStatement*>(
+         statements[0].get()
+      );
+
+   ASSERT_NE(exprStmt, nullptr);
+
+   const auto* call =
+      dynamic_cast<const CallExpression*>(
+         &exprStmt->expression()
+      );
 
    const auto* member =
       dynamic_cast<const MemberAccessExpression*>(&call->callee());

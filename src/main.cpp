@@ -23,13 +23,6 @@ static std::string readFileToString(const std::string& path) {
    return buffer.str();
 }
 
-StmtPtr parseString(const std::string& code, ErrorHandler* errHandler) {
-   auto source = std::make_unique<StringSource>("test.djm", code);
-   Lexer lexer(*source);
-   Parser parser(lexer, errHandler);
-   
-   return parser.parseStatement();
-}
 
 int main(int argc, char** argv) {
    if (argc < 2) {
