@@ -184,10 +184,17 @@ std::unique_ptr<TypeNode> Parser::parseValueType() {
    throw ParseError();
 }
 
+/*
+expression = logical_or_expr ;
+*/
 ExprPtr Parser::parseExpression() {
    return parseLogicalOrExpression();
 }
 
+/*
+logical_or_expr = logical_and_expr ,
+                  { "||" , logical_and_expr } ;
+*/
 ExprPtr Parser::parseLogicalOrExpression() {
    auto expression = parseLogicalAndExpression();
 
@@ -207,6 +214,11 @@ ExprPtr Parser::parseLogicalOrExpression() {
    return expression;
 }
 
+/*
+logical_and_expr
+                = equality_expr ,
+                  { "&&" , equality_expr } ;
+*/
 ExprPtr Parser::parseLogicalAndExpression() {
    auto expression = parseEqualityExpression();
 
@@ -226,6 +238,10 @@ ExprPtr Parser::parseLogicalAndExpression() {
    return expression;
 }
 
+/*
+equality_expr   = relational_expr ,
+                  [ ( "==" | "!=" | "contains" ) , relational_expr ] ;
+*/
 ExprPtr Parser::parseEqualityExpression() {
    auto expression = parseRelationalExpression();
 
@@ -271,6 +287,10 @@ ExprPtr Parser::parseEqualityExpression() {
    return expression;
 }
 
+/*
+relational_expr = additive_expr ,
+                  [ ( "<" | "<=" | ">" | ">=" ) , additive_expr ] ;
+*/
 ExprPtr Parser::parseRelationalExpression() {
    auto expression = parseAdditiveExpression();
 
@@ -329,6 +349,10 @@ ExprPtr Parser::parseRelationalExpression() {
    return expression;
 }
 
+/*
+additive_expr   = multiplicative_expr ,
+                  { ( "+" | "-" ) , multiplicative_expr } ;
+*/
 ExprPtr Parser::parseAdditiveExpression() {
    auto expression = parseMultiplicativeExpression();
 
@@ -360,6 +384,11 @@ ExprPtr Parser::parseAdditiveExpression() {
    return expression;
 }
 
+/*
+multiplicative_expr
+                = list_operator_expr ,
+                  { ( "*" | "/" ) , list_operator_expr } ;
+*/
 ExprPtr Parser::parseMultiplicativeExpression() {
    auto expression = parseMapExpression();
 
@@ -391,6 +420,13 @@ ExprPtr Parser::parseMultiplicativeExpression() {
    return expression;
 }
 
+/*
+list_operator_expr
+                = map_expr ;
+
+map_expr        = filter_expr ,
+                  { "|>" , filter_expr } ;
+*/
 ExprPtr Parser::parseMapExpression() {
    auto expression = parseFilterExpression();
 
@@ -410,6 +446,10 @@ ExprPtr Parser::parseMapExpression() {
    return expression;
 }
 
+/*
+filter_expr     = group_expr ,
+                  { "?" , group_expr } ;
+*/
 ExprPtr Parser::parseFilterExpression() {
    auto expression = parseGroupExpression();
 
@@ -429,6 +469,10 @@ ExprPtr Parser::parseFilterExpression() {
    return expression;
 }
 
+/*
+group_expr      = cast_expr ,
+                  { "%" , cast_expr } ;
+*/
 ExprPtr Parser::parseGroupExpression() {
    auto expression = parseCastExpression();
 
@@ -448,6 +492,10 @@ ExprPtr Parser::parseGroupExpression() {
    return expression;
 }
 
+/*
+cast_expr       = unary_expr ,
+                  { "as" , value_type } ;
+*/
 ExprPtr Parser::parseCastExpression() {
    auto expression = parseUnaryExpression();
 
@@ -467,6 +515,10 @@ ExprPtr Parser::parseCastExpression() {
    return expression;
 }
 
+/*
+unary_expr      = unary_op , unary_expr
+                | power_expr ;
+*/
 ExprPtr Parser::parseUnaryExpression() {
    SourceLocation location = current_.location();
 
@@ -498,6 +550,10 @@ ExprPtr Parser::parseUnaryExpression() {
    return parsePowerExpression();
 }
 
+/*
+power_expr      = postfix_expr ,
+                  [ "^" , unary_expr ] ;
+*/
 ExprPtr Parser::parsePowerExpression() {
    auto expression = parsePostfixExpression();
 
@@ -517,6 +573,13 @@ ExprPtr Parser::parsePowerExpression() {
    return expression;
 }
 
+/*
+postfix_expr    = primary_expr , { postfix_op } ;
+postfix_op      = 	"." , identifier , [ call_suffix ]
+                	| index_suffix
+               		| slice_suffix
+                	| call_suffix ;
+*/
 ExprPtr Parser::parsePostfixExpression() {
    auto expression = parsePrimaryExpression();
 
@@ -612,6 +675,9 @@ ExprPtr Parser::parsePostfixExpression() {
    return expression;
 }
 
+/*
+argument_list   = expression , { "," , expression } ;
+*/
 std::vector<ExprPtr> Parser::parseArgumentList() {
    consume(TokenType::LParen, "expected '('");
    // Teoretycznie nie powinno się we wcześniejszym kodzie
@@ -632,6 +698,12 @@ std::vector<ExprPtr> Parser::parseArgumentList() {
    return arguments;
 }
 
+/*
+primary_expr    = literal
+                | identifier
+                | "(" , expression , ")"
+                | "this" ;
+*/
 ExprPtr Parser::parsePrimaryExpression() {
    SourceLocation location = current_.location();
 
@@ -708,12 +780,11 @@ ExprPtr Parser::parsePrimaryExpression() {
    throw ParseError();
 }
 
+/*
+list_literal    = "[" , [ expression , { "," , expression } ] , "]" ;
+*/
 ExprPtr Parser::parseListLiteralExpression(SourceLocation location) {
    consume(TokenType::LBracket, "expected '['");
-   // Teoretycznie nie powinno się we wcześniejszym kodzie
-   // dopuścić do sytuacji, że wywołujemy powyższe parse_XXX
-   // bez sprawdzenia check(Token:LBracket), ale w razie czego
-   // tak napisałem (gdyby wywołać powyższe parse_XXX bez uprzedniego sprawdzenia)
 
    std::vector<ExprPtr> elements;
 
@@ -731,6 +802,15 @@ ExprPtr Parser::parseListLiteralExpression(SourceLocation location) {
    );
 }
 
+/*
+statement       = variable_decl_stmt
+                | expression_or_assignment_stmt
+                | return_stmt
+                | if_stmt
+                | while_stmt
+                | for_stmt
+                | block ;
+*/
 StmtPtr Parser::parseStatement() {
    try {
       skipNewlines();
@@ -744,6 +824,18 @@ StmtPtr Parser::parseStatement() {
       }
 
       if (auto statement = tryParseReturnStatement()) {
+         return statement;
+      }
+
+      if (auto statement = tryParseIfStatement()) {
+         return statement;
+      }
+
+      if (auto statement = tryParseWhileStatement()) {
+         return statement;
+      }
+
+      if (auto statement = tryParseForStatement()) {
          return statement;
       }
 
@@ -763,6 +855,97 @@ StmtPtr Parser::parseStatement() {
    }
 }
 
+/*
+if_stmt         = "if" , expression , block ,
+                  { "else" , "if" , expression , block } ,
+                  [ "else" , block ] ;
+*/
+StmtPtr Parser::tryParseIfStatement() {
+   if (!check(TokenType::KwIf)) {
+      return nullptr;
+   }
+
+   advance();
+   SourceLocation location = previous_.location();
+
+   auto condition = parseExpression();
+
+   auto thenBranch = parseBlock();
+
+   StmtPtr elseBranch = nullptr;
+
+   if (match(TokenType::KwElse)) {
+      if (check(TokenType::KwIf)) {
+         elseBranch = tryParseIfStatement();
+      } else {
+         elseBranch = parseBlock();
+      }
+   }
+
+   return std::make_unique<IfStatement>(
+      location,
+      std::move(condition),
+      std::move(thenBranch),
+      std::move(elseBranch)
+   );
+}
+
+/*
+while_stmt      = "while" , expression , block ;
+*/
+StmtPtr Parser::tryParseWhileStatement() {
+   if (!check(TokenType::KwWhile)) {
+      return nullptr;
+   }
+
+   advance();
+   SourceLocation location = previous_.location();
+
+   auto condition = parseExpression();
+
+   auto body = parseBlock();
+
+   return std::make_unique<WhileStatement>(
+      location,
+      std::move(condition),
+      std::move(body)
+   );
+}
+
+/*
+for_stmt        = "for" , value_type , identifier , "in" , expression , block ;
+*/
+StmtPtr Parser::tryParseForStatement() {
+   if (!check(TokenType::KwFor)) {
+      return nullptr;
+   }
+
+   advance();
+   SourceLocation location = previous_.location();
+
+   Token variableToken = consume(
+      TokenType::Identifier,
+      "expected loop variable name after 'for'"
+   );
+
+   consume(TokenType::KwIn, "expected 'in' after loop variable");
+
+   auto iterable = parseExpression();
+
+   auto body = parseBlock();
+
+   return std::make_unique<ForStatement>(
+      location,
+      variableToken.lexeme(),
+      variableToken.location(),
+      std::move(iterable),
+      std::move(body)
+   );
+}
+
+/*
+block           = "{" , { statement } , "}" ;
+*/
 std::unique_ptr<BlockStatement> Parser::parseBlock() {
    SourceLocation location = current_.location();
 
@@ -829,6 +1012,9 @@ bool Parser::looksLikeVariableDeclaration() const {
    return false;
 }
 
+/*
+variable_decl_stmt	= [ "mut" ] , 	value_type , identifier_list , [ "=" , expression ] ;
+*/
 StmtPtr Parser::parseVariableDeclarationStatement() {
    SourceLocation location = current_.location();
 
@@ -881,6 +1067,10 @@ StmtPtr Parser::parseVariableDeclarationStatement() {
    );
 }
 
+/*
+expression_or_assignment_stmt
+                = expression , [ "=" , expression ] ;
+*/
 StmtPtr Parser::parseExpressionOrAssignmentStatement() {
    SourceLocation location = current_.location();
 
@@ -953,6 +1143,9 @@ bool Parser::isAssignable(const Expression& expression) const {
    return false;
 }
 
+/*
+return_stmt     = "return" , [ expression ] ;
+*/
 StmtPtr Parser::tryParseReturnStatement() {
    if (!check(TokenType::KwReturn)) {
       return nullptr;
@@ -1009,6 +1202,11 @@ ProgramPtr Parser::parseProgram() {
    );
 }
 
+/*
+top_level_decl  = class_decl
+                | function_decl
+                | global_const_decl ;
+*/
 DeclPtr Parser::parseTopLevelDeclaration() {
    if (auto declaration = tryParseClassDeclaration()) {
       return declaration;
@@ -1031,6 +1229,12 @@ DeclPtr Parser::parseTopLevelDeclaration() {
    throw ParseError();
 }
 
+/*
+import_spec     = "*"
+                | identifier , { "," , identifier } ;
+
+import_decl     = "import" , import_spec , "from" , string_literal ;
+*/
 ImportDeclPtr Parser::parseImportDeclaration() {
    if (!check(TokenType::KwImport)) {
       return nullptr;
@@ -1082,6 +1286,11 @@ ImportDeclPtr Parser::parseImportDeclaration() {
    );
 }
 
+/*
+parameter_list  = parameter , { "," , parameter } ;
+
+parameter       = identifier , ":" , value_type ;
+*/
 ParameterNode Parser::parseParameter() {
    const Token& nameToken = consume(
       TokenType::Identifier,
@@ -1111,6 +1320,12 @@ std::vector<ParameterNode> Parser::parseParameterList() {
    return parameters;
 }
 
+/*
+function_decl 	= 	"fun" , identifier ,
+                	"(" , [ parameter_list ] , ")" ,
+                	"->" , type ,
+                	block ;
+*/
 FunctionDeclPtr Parser::tryParseFunctionDeclaration() {
    if (!match(TokenType::KwFun)) {
       return nullptr;
@@ -1148,11 +1363,9 @@ FunctionDeclPtr Parser::tryParseFunctionDeclaration() {
    );
 }
 
-// Teoretycznie można by wydzielić wspólną część dla parsowania
-// globalnej stałej i zmiennej (lokalnej), aczkolwiek
-// jeśli zrobić oddzielnie, to łatwiej byłoby wprowadzić zmianę
-// gramatyki polegającą na obowiązkowym inicjalizowaniu stałej globalnej wartością
-// (bo inaczej po co w ogóle ją deklarować, żeby trzymała domyślną?)
+/*
+global_const_decl	= 		value_type , identifier_list , [ "=" , expression ] ;
+*/
 GlobalConstDeclPtr Parser::tryParseGlobalConstantDeclaration() {
    if (!isValueTypeStart()) {
       return nullptr;
@@ -1202,6 +1415,9 @@ GlobalConstDeclPtr Parser::tryParseGlobalConstantDeclaration() {
    );
 }
 
+/*
+class_decl      = "class" , identifier , "{" , { class_member } , "}" ;
+*/
 ClassDeclPtr Parser::tryParseClassDeclaration() {
    if (!check(TokenType::KwClass)) {
       return nullptr;
@@ -1241,10 +1457,11 @@ ClassDeclPtr Parser::tryParseClassDeclaration() {
    );
 }
 
-// Dopasowywanie słów początkowych w ten sposób może nie wygląda
-// na elegancki sposób, aczkolwiek umożliwia to odróżnienie sytuacji,
-// gdy deklarowana jest metoda (mut jest tylko dla metod według gramatyki),
-// private jest tylko dla atrybutów, a static może być dla obydwu.
+/*
+class_member    = field_decl
+                | method_decl
+                | constructor_decl ;
+*/
 ClassMemberPtr Parser::parseClassMember(const std::string& className) {
    SourceLocation location = current_.location();
 
@@ -1277,6 +1494,22 @@ ClassMemberPtr Parser::parseClassMember(const std::string& className) {
    throw ParseError();
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+field_modifier  = "private"
+                | "static" ;
+
+field_decl      = [ field_modifier ] ,
+                  identifier , ":" , value_type ,
+                  [ "=" , expression ] ;
+
+method_modifier = "mut"
+                | "static" ;
+
+method_decl     = [ method_modifier ] ,
+                  function_decl;
+*/
 ClassMemberPtr Parser::parseStaticClassMember() {
    SourceLocation location = previous_.location();
 
@@ -1331,6 +1564,14 @@ std::unique_ptr<MethodDeclaration> Parser::parseMethodAfterModifier(
    );
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+constructor_decl
+                = identifier ,
+                  "(" , [ parameter_list ] , ")" ,
+                  block ;
+*/
 ClassMemberPtr Parser::parseIdentifierStartedClassMember(
    const std::string& className
 ) {

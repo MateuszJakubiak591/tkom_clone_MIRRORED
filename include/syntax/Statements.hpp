@@ -32,7 +32,7 @@ using StmtPtr = std::unique_ptr<Statement>;
 block = "{" , { statement } , "}" ;
 */
 
-class BlockStatement final : public Statement {
+class BlockStatement  : public Statement {
 public:
    BlockStatement(SourceLocation location, std::vector<StmtPtr> statements)
       : Statement(std::move(location)),
@@ -46,7 +46,7 @@ private:
    std::vector<StmtPtr> statements_;
 };
 
-class ExpressionStatement final : public Statement {
+class ExpressionStatement  : public Statement {
 public:
    ExpressionStatement(SourceLocation location, ExprPtr expression)
       : Statement(std::move(location)),
@@ -76,7 +76,7 @@ struct VariableDeclarator {
    SourceLocation location;
 };
 
-class VariableDeclarationStatement final : public Statement {
+class VariableDeclarationStatement  : public Statement {
 public:
    VariableDeclarationStatement(
       SourceLocation location,
@@ -119,7 +119,7 @@ private:
 return_stmt = "return" , [ expression ] ;
 */
 
-class ReturnStatement final : public Statement {
+class ReturnStatement  : public Statement {
 public:
    ReturnStatement(SourceLocation location, ExprPtr expression)
       : Statement(std::move(location)),
@@ -133,6 +133,98 @@ private:
    ExprPtr expression_;
 };
 
+class IfStatement  : public Statement {
+public:
+   IfStatement(
+      SourceLocation location,
+      ExprPtr condition,
+      std::unique_ptr<BlockStatement> thenBranch,
+      StmtPtr elseBranch
+   )
+      : Statement(std::move(location)),
+        condition_(std::move(condition)),
+        thenBranch_(std::move(thenBranch)),
+        elseBranch_(std::move(elseBranch)) {}
+
+   const Expression& condition() const {
+      return *condition_;
+   }
+
+   const BlockStatement& thenBranch() const {
+      return *thenBranch_;
+   }
+
+   const Statement* elseBranch() const {
+      return elseBranch_.get();
+   }
+
+private:
+   ExprPtr condition_;
+   std::unique_ptr<BlockStatement> thenBranch_;
+   StmtPtr elseBranch_;
+};
+
+class WhileStatement  : public Statement {
+public:
+   WhileStatement(
+      SourceLocation location,
+      ExprPtr condition,
+      std::unique_ptr<BlockStatement> body
+   )
+      : Statement(std::move(location)),
+        condition_(std::move(condition)),
+        body_(std::move(body)) {}
+
+   const Expression& condition() const {
+      return *condition_;
+   }
+
+   const BlockStatement& body() const {
+      return *body_;
+   }
+
+private:
+   ExprPtr condition_;
+   std::unique_ptr<BlockStatement> body_;
+};
+
+class ForStatement  : public Statement {
+public:
+   ForStatement(
+      SourceLocation location,
+      std::string variableName,
+      SourceLocation variableLocation,
+      ExprPtr iterable,
+      std::unique_ptr<BlockStatement> body
+   )
+      : Statement(std::move(location)),
+        variableName_(std::move(variableName)),
+        variableLocation_(std::move(variableLocation)),
+        iterable_(std::move(iterable)),
+        body_(std::move(body)) {}
+
+   const std::string& variableName() const {
+      return variableName_;
+   }
+
+   const SourceLocation& variableLocation() const {
+      return variableLocation_;
+   }
+
+   const Expression& iterable() const {
+      return *iterable_;
+   }
+
+   const BlockStatement& body() const {
+      return *body_;
+   }
+
+private:
+   std::string variableName_;
+   SourceLocation variableLocation_;
+   ExprPtr iterable_;
+   std::unique_ptr<BlockStatement> body_;
+};
 /*
 ///////////////////////   STARA GRAMATYKA //////////////////////////////////////
 statement       = variable_decl_stmt
@@ -191,7 +283,7 @@ aby rozpoznował token typu funkcji).
 
 */
 
-class AssignmentStatement final : public Statement {
+class AssignmentStatement  : public Statement {
 public:
    AssignmentStatement(SourceLocation location, ExprPtr target, ExprPtr value)
       : Statement(std::move(location)),

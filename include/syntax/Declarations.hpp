@@ -69,7 +69,7 @@ using FunctionDeclPtr = std::unique_ptr<FunctionDeclaration>;
 // możliwości mut (mutowalności), można by wyciągnąć
 // wspólną część klasy GlobalConstantDeclaration i VariableDeclarationStatement
 // do innej klasy
-class GlobalConstantDeclaration final : public Declaration {
+class GlobalConstantDeclaration  : public Declaration {
 public:
    GlobalConstantDeclaration(
       SourceLocation location,
@@ -121,7 +121,7 @@ enum class MethodModifier {
    Static
 };
 
-class FieldDeclaration final : public ClassMember {
+class FieldDeclaration  : public ClassMember {
 public:
    FieldDeclaration(
       SourceLocation location,
@@ -159,7 +159,7 @@ private:
    ExprPtr initializer_;
 };
 
-class MethodDeclaration final : public ClassMember {
+class MethodDeclaration  : public ClassMember {
 public:
    MethodDeclaration(
       SourceLocation location,
@@ -185,7 +185,7 @@ private:
 
 using MethodDeclarationPtr = std::unique_ptr<MethodDeclaration>;
 
-class ConstructorDeclaration final : public ClassMember {
+class ConstructorDeclaration  : public ClassMember {
 public:
    ConstructorDeclaration(
       SourceLocation location,
@@ -218,7 +218,7 @@ private:
 
 using ConstructorDeclarationPtr = std::unique_ptr<ConstructorDeclaration>;
 
-class ClassDeclaration final : public Declaration {
+class ClassDeclaration  : public Declaration {
 public:
    ClassDeclaration(
       SourceLocation location,
@@ -244,7 +244,7 @@ private:
 
 using ClassDeclPtr = std::unique_ptr<ClassDeclaration>;
 
-class ImportDeclaration final : public Node {
+class ImportDeclaration  : public Node {
 public:
    ImportDeclaration(
       SourceLocation location,
@@ -277,7 +277,7 @@ private:
 
 using ImportDeclPtr = std::unique_ptr<ImportDeclaration>;
 
-class Program final : public Node {
+class Program  : public Node {
 public:
    Program(
       SourceLocation location,

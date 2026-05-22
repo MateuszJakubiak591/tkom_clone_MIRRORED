@@ -79,6 +79,10 @@ private:
    StmtPtr tryParseReturnStatement();
    StmtPtr parseVariableDeclarationStatement();
 
+   StmtPtr tryParseIfStatement();
+   StmtPtr tryParseWhileStatement();
+   StmtPtr tryParseForStatement();
+
    DeclPtr parseTopLevelDeclaration();
 
    ImportDeclPtr parseImportDeclaration();

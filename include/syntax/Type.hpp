@@ -29,56 +29,56 @@ public:
    ~TypeNode() override = default;
 };
 
-class VoidTypeNode final : public TypeNode {
+class VoidTypeNode  : public TypeNode {
 public:
    // using TypeNode::TypeNode ???
    explicit VoidTypeNode(SourceLocation location)
       : TypeNode(std::move(location)) {}
 };
 
-class IntTypeNode final : public TypeNode {
+class IntTypeNode  : public TypeNode {
 public:
    // using TypeNode::TypeNode ???
    explicit IntTypeNode(SourceLocation location)
       : TypeNode(std::move(location)) {}
 };
 
-class UintTypeNode final : public TypeNode {
+class UintTypeNode  : public TypeNode {
 public:
    // using TypeNode::TypeNode ???
    explicit UintTypeNode(SourceLocation location)
       : TypeNode(std::move(location)) {}
 };
 
-class FloatTypeNode final : public TypeNode {
+class FloatTypeNode  : public TypeNode {
 public:
    // using TypeNode::TypeNode ???
    explicit FloatTypeNode(SourceLocation location)
       : TypeNode(std::move(location)) {}
 };
 
-class BoolTypeNode final : public TypeNode {
+class BoolTypeNode  : public TypeNode {
 public:
    // using TypeNode::TypeNode ???
    explicit BoolTypeNode(SourceLocation location)
       : TypeNode(std::move(location)) {}
 };
 
-class CharTypeNode final : public TypeNode {
+class CharTypeNode  : public TypeNode {
 public:
    // using TypeNode::TypeNode ???
    explicit CharTypeNode(SourceLocation location)
       : TypeNode(std::move(location)) {}
 };
 
-class StringTypeNode final : public TypeNode {
+class StringTypeNode  : public TypeNode {
 public:
    // using TypeNode::TypeNode ???
    explicit StringTypeNode(SourceLocation location)
       : TypeNode(std::move(location)) {}
 };
 
-class ListTypeNode final : public TypeNode {
+class ListTypeNode  : public TypeNode {
 public:
    ListTypeNode(SourceLocation location, std::unique_ptr<TypeNode> elementType)
       : TypeNode(std::move(location)),
@@ -92,7 +92,7 @@ private:
    std::unique_ptr<TypeNode> elementType_;
 };
 
-class UserTypeNode final : public TypeNode {
+class UserTypeNode  : public TypeNode {
 public:
    UserTypeNode(SourceLocation location, std::string name)
       : TypeNode(std::move(location)),
