@@ -26,7 +26,7 @@ struct ParameterNode {
    std::unique_ptr<TypeNode> type;
 };
 
-class FunctionDeclaration final : public Declaration {
+class FunctionDeclaration : public Declaration {
 public:
    FunctionDeclaration(
       SourceLocation location,
@@ -101,10 +101,7 @@ private:
 
 class ClassMember : public Node {
 public:
-   explicit ClassMember(SourceLocation location)
-      : Node(std::move(location)) {}
-
-   ~ClassMember() override = default;
+   using Node::Node;
 };
 
 using ClassMemberPtr = std::unique_ptr<ClassMember>;
