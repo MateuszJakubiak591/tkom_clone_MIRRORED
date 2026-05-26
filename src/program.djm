@@ -1,0 +1,6 @@
+import * from "file1.djm"
+class User {
+   mut setName(name: string) -> void {
+      this.name = name
+   }
+};
