@@ -91,17 +91,3 @@ public:
 private:
    std::unique_ptr<TypeNode> elementType_;
 };
-
-class UserTypeNode  : public TypeNode {
-public:
-   UserTypeNode(SourceLocation location, std::string name)
-      : TypeNode(std::move(location)),
-        name_(std::move(name)) {}
-
-   const std::string& name() const {
-      return name_;
-   }
-
-private:
-   std::string name_;
-};

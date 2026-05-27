@@ -96,36 +96,10 @@ private:
 
    ExprPtr parseExpression();
 
-   ClassMemberPtr parseClassMember(const std::string& className);
-   ClassMemberPtr parseIdentifierStartedClassMember(const std::string& className);
-   ClassMemberPtr parseStaticClassMember();
-
-   std::unique_ptr<FieldDeclaration> parseFieldAfterModifier(
-      FieldModifier modifier,
-      SourceLocation location
-   );
-
-   std::unique_ptr<FieldDeclaration> parseFieldAfterFirstName(
-      FieldModifier modifier,
-      SourceLocation location,
-      const Token& firstName
-   );
-
-   MethodDeclarationPtr parseMethodAfterModifier(
-      MethodModifier modifier,
-      SourceLocation location
-   );
-
-   ConstructorDeclarationPtr parseConstructorAfterName(
-      const std::string& className,
-      const Token& nameToken
-   );
-
    StmtPtr parseStatement();
    StmtPtr tryParseBlockStatement();
 
    FunctionDeclPtr tryParseFunctionDeclaration();
-   ClassDeclPtr tryParseClassDeclaration();
 };
 
 class ParseError : public std::runtime_error {

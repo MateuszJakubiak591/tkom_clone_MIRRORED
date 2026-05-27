@@ -359,21 +359,6 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/*
-a.b().c
-
-(a.b()).c
-
-MemberAccessExpression(memberName = "c")
-  object:
-    CallExpression
-      callee:
-        MemberAccessExpression(memberName = "b")
-          object:
-            IdentifierExpression("a")
-      arguments: []
-*/
-
 class CallExpression final : public Expression {
 public:
    CallExpression(SourceLocation location, ExprPtr callee, std::vector<ExprPtr> arguments)
@@ -393,28 +378,6 @@ private:
    ExprPtr callee_;
    std::vector<ExprPtr> arguments_;
 };
-
-class MemberAccessExpression final : public Expression {
-public:
-   MemberAccessExpression(SourceLocation location, ExprPtr object, std::string memberName)
-      : Expression(std::move(location)),
-        object_(std::move(object)),
-        memberName_(std::move(memberName)) {}
-
-   const Expression& object() const {
-      return *object_;
-   }
-
-   const std::string& memberName() const {
-      return memberName_;
-   }
-
-private:
-   ExprPtr object_;
-   std::string memberName_;
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class IndexExpression final : public Expression {
 public:

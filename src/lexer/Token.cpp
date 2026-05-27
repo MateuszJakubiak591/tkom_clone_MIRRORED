@@ -112,12 +112,9 @@ TokenType keywordType(const std::string& text) {
       {"list", TokenType::KwList},
       {"void", TokenType::KwVoid},
 
-      {"class", TokenType::KwClass},
       {"fun", TokenType::KwFun},
       {"return", TokenType::KwReturn},
       {"mut", TokenType::KwMut},
-      {"private", TokenType::KwPrivate},
-      {"static", TokenType::KwStatic},
 
       {"if", TokenType::KwIf},
       {"else", TokenType::KwElse},
@@ -171,12 +168,9 @@ std::string tokenTypeToString(TokenType type) {
       case TokenType::KwList: return "KwList";
       case TokenType::KwVoid: return "KwVoid";
 
-      case TokenType::KwClass: return "KwClass";
       case TokenType::KwFun: return "KwFun";
       case TokenType::KwReturn: return "KwReturn";
       case TokenType::KwMut: return "KwMut";
-      case TokenType::KwPrivate: return "KwPrivate";
-      case TokenType::KwStatic: return "KwStatic";
 
       case TokenType::KwIf: return "KwIf";
       case TokenType::KwElse: return "KwElse";

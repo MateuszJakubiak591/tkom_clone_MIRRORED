@@ -28,12 +28,9 @@ enum class TokenType {
    KwList,
    KwVoid,
 
-   KwClass,
    KwFun,
    KwReturn,
    KwMut,
-   KwPrivate,
-   KwStatic,
 
    KwIf,
    KwElse,
