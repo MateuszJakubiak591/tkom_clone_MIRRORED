@@ -24,7 +24,7 @@ static std::string readFileToString(const std::string& path) {
 }
 
 
-int main1(int argc, char** argv) {
+int main(int argc, char** argv) {
    if (argc < 2) {
       std::cerr << "Użycie: " << argv[0] << " <plik.djm>\n";
       return 1;
@@ -54,7 +54,7 @@ int main1(int argc, char** argv) {
    return 0;   
 }
 
-int main(int argc, char** argv) {
+int main1(int argc, char** argv) {
    if (argc < 2) {
       std::cerr << "Użycie: " << argv[0] << " <plik.djm>\n";
       return 1;

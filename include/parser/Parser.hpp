@@ -77,6 +77,8 @@ private:
    StmtPtr parseExpressionOrAssignmentStatement();
    
    StmtPtr tryParseReturnStatement();
+   StmtPtr tryParseContinueStatement();
+   StmtPtr tryParseBreakStatement();
    StmtPtr parseVariableDeclarationStatement();
 
    StmtPtr tryParseIfStatement();

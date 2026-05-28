@@ -117,8 +117,8 @@ return check(TokenType::KwInt)
 
 bool Parser::isValueTypeStart() const {
 return isBasicValueTypeStart()
-      || check(TokenType::KwList)
-      || check(TokenType::Identifier);
+      || check(TokenType::KwList);
+      //|| check(TokenType::Identifier);
 }
 
 std::unique_ptr<TypeNode> Parser::parseType() {
@@ -818,6 +818,14 @@ StmtPtr Parser::parseStatement() {
          return statement;
       }
 
+      if (auto statement = tryParseContinueStatement()) {
+         return statement;
+      }
+
+      if (auto statement = tryParseBreakStatement()) {
+         return statement;
+      }
+
       if (auto statement = tryParseIfStatement()) {
          return statement;
       }
@@ -1106,6 +1114,27 @@ bool Parser::isAssignable(const Expression& expression) const {
    return false;
 }
 
+StmtPtr Parser::tryParseContinueStatement() {
+   if (!check(TokenType::KwContinue)) {
+      return nullptr;
+   }
+
+   SourceLocation location = current_.location();
+   advance();
+   consumeStatementEnd();
+   return std::make_unique<ContinueStatement>(location);
+}
+
+StmtPtr Parser::tryParseBreakStatement() {
+   if (!check(TokenType::KwBreak)) {
+      return nullptr;
+   }
+
+   SourceLocation location = current_.location();
+   advance();
+   consumeStatementEnd();
+   return std::make_unique<BreakStatement>(location);
+}
 /*
 return_stmt     = "return" , [ expression ] ;
 */

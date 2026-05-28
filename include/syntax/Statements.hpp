@@ -133,6 +133,18 @@ private:
    ExprPtr expression_;
 };
 
+class BreakStatement final : public Statement {
+public:
+   explicit BreakStatement(SourceLocation location)
+      : Statement(std::move(location)) {}
+};
+
+class ContinueStatement final : public Statement {
+public:
+   explicit ContinueStatement(SourceLocation location)
+      : Statement(std::move(location)) {}
+};
+
 class IfStatement  : public Statement {
 public:
    IfStatement(
@@ -225,6 +237,7 @@ private:
    ExprPtr iterable_;
    std::unique_ptr<BlockStatement> body_;
 };
+
 /*
 ///////////////////////   STARA GRAMATYKA //////////////////////////////////////
 statement       = variable_decl_stmt
