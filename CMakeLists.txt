@@ -72,10 +72,10 @@ target_link_libraries(lexer_file_tests PRIVATE djm_core gtest_main)
 target_include_directories(lexer_file_tests PRIVATE ${TEST_INCLUDES}) 
 gtest_discover_tests(lexer_file_tests) 
 
-add_executable(lexer_user_class_test tests/TestUtils.cpp tests/lexer_user_class_test.cpp) 
-target_link_libraries(lexer_user_class_test PRIVATE djm_core gtest_main) 
-target_include_directories(lexer_user_class_test PRIVATE ${TEST_INCLUDES}) 
-gtest_discover_tests(lexer_user_class_test WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+add_executable(lexer_functions_program_test tests/TestUtils.cpp tests/lexer_functions_program_test.cpp) 
+target_link_libraries(lexer_functions_program_test PRIVATE djm_core gtest_main) 
+target_include_directories(lexer_functions_program_test PRIVATE ${TEST_INCLUDES}) 
+gtest_discover_tests(lexer_functions_program_test WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 add_executable(lexer_char_tests tests/TestUtils.cpp tests/lexer_char_tests.cpp) 
 target_link_libraries(lexer_char_tests PRIVATE djm_core gtest_main) 
@@ -106,3 +106,9 @@ add_executable(parser_complex_expression_tests tests/TestUtils.cpp tests/parser_
 target_link_libraries(parser_complex_expression_tests PRIVATE djm_core gtest_main) 
 target_include_directories(parser_complex_expression_tests PRIVATE ${TEST_INCLUDES}) 
 gtest_discover_tests(parser_complex_expression_tests)
+
+
+#[===[
+komentarz
+wieloliniowy
+]===]

@@ -121,6 +121,8 @@ TokenType keywordType(const std::string& text) {
       {"while", TokenType::KwWhile},
       {"for", TokenType::KwFor},
       {"in", TokenType::KwIn},
+      {"break", TokenType::KwBreak},
+      {"continue", TokenType::KwContinue},
 
       {"import", TokenType::KwImport},
       {"from", TokenType::KwFrom},
@@ -220,6 +222,8 @@ std::string tokenTypeToString(TokenType type) {
       case TokenType::Comma: return "Comma";
       case TokenType::Dot: return "Dot";
       case TokenType::Colon: return "Colon";
+      case TokenType::KwBreak: return "KwBreak";
+      case TokenType::KwContinue: return "KwContinue";
    }
 
    return "Unknown";

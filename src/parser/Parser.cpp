@@ -170,14 +170,6 @@ std::unique_ptr<TypeNode> Parser::parseValueType() {
       return std::make_unique<ListTypeNode>(location, std::move(elementType));
    }
 
-   if (check(TokenType::Identifier)) {
-      std::string name = current_.lexeme();
-      advance();
-
-      return std::make_unique<UserTypeNode>(location, std::move(name));
-   }
-
-
    errorHandler_->report(ErrorType::Parser, "expected value type",
                                                 current_.location());
 
@@ -585,6 +577,21 @@ ExprPtr Parser::parsePostfixExpression() {
 
    while (true) {
 
+      if (match(TokenType::Dot)) {
+         Token memberName = consume(
+            TokenType::Identifier,
+            "expected member name after '.'"
+         );
+
+         expression = std::make_unique<MemberAccessExpression>(
+            memberName.location(),
+            std::move(expression),
+            memberName.lexeme()
+         );
+
+         continue;
+      }
+
       if (check(TokenType::LParen)) {
          SourceLocation location = current_.location();
 
@@ -823,7 +830,7 @@ StmtPtr Parser::parseStatement() {
          return statement;
       }
 
-      if (looksLikeVariableDeclaration()) {
+      if (check(TokenType::KwMut) || isValueTypeStart()) {
          return parseVariableDeclarationStatement();
       }
 
@@ -966,34 +973,6 @@ StmtPtr Parser::tryParseBlockStatement() {
    }
 
    return parseBlock();
-}
-
-bool Parser::looksLikeVariableDeclaration() const {
-   // zmienne globalne powinny być de facto stałymi,
-   // ale to już ustali analizator semantyczny
-   if (check(TokenType::KwMut)) {
-      return true;
-   }
-
-   if (isBasicValueTypeStart()) {
-      return true;
-   }
-
-   if (check(TokenType::KwList)) {
-      return true;
-   }
-
-   // Język raczej nie jest idealnie LL(1), bo może być:
-   // User user = User(...)
-   // i wtedy mamy dwa pierwsze tokeny typu identifier
-   // Stąd obecność takiej nieco dziwnej metody
-   // jak bool Parser::looksLikeVariableDeclaration()
-   if (check(TokenType::Identifier) &&
-       next_.type() == TokenType::Identifier) {
-      return true;
-   }
-
-   return false;
 }
 
 /*

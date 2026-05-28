@@ -359,6 +359,30 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class MemberAccessExpression final : public Expression {
+public:
+   MemberAccessExpression(
+      SourceLocation location,
+      ExprPtr object,
+      std::string memberName
+   )
+      : Expression(std::move(location)),
+        object_(std::move(object)),
+        memberName_(std::move(memberName)) {}
+
+   const Expression& object() const {
+      return *object_;
+   }
+
+   const std::string& memberName() const {
+      return memberName_;
+   }
+
+private:
+   ExprPtr object_;
+   std::string memberName_;
+};
+
 class CallExpression final : public Expression {
 public:
    CallExpression(SourceLocation location, ExprPtr callee, std::vector<ExprPtr> arguments)

@@ -50,6 +50,8 @@ block           = "{" , { statement } , "}" ;
 statement       = variable_decl_stmt
                 | expression_or_assignment_stmt
                 | return_stmt
+                | break_stmt
+                | continue_stmt
                 | if_stmt
                 | while_stmt
                 | for_stmt
@@ -79,6 +81,10 @@ expression_or_assignment_stmt
                 = expression , [ "=" , expression ] ;
 
 return_stmt     = "return" , [ expression ] ;
+
+break_stmt      = "break" ;
+
+continue_stmt   = "continue" ;
 
 if_stmt         = "if" , expression , block ,
                   { "else" , "if" , expression , block } ,
@@ -144,8 +150,6 @@ primary_expr    = literal
                 | identifier
                 | "(" , expression , ")"
 
-// Tego używa się do importowania (np. file1.funOrConstFromFile1)
-qualified_name  = identifier , "." , identifier ;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -156,8 +160,9 @@ slice_suffix    = "[" , [ expression ] , ":" , [ expression ] , "]" ;
 
 postfix_expr    = primary_expr , { postfix_op } ;
 
-postfix_op      = call_suffix
-                | index_suffix
-                | slice_suffix ;
+postfix_op      = 	"." , identifier , [ call_suffix ]
+                	| index_suffix
+               		| slice_suffix
+                	| call_suffix ;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////

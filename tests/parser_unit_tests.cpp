@@ -54,22 +54,6 @@ const FunctionDeclaration* asFunction(const DeclPtr& declaration) {
    return dynamic_cast<const FunctionDeclaration*>(declaration.get());
 }
 
-const ClassDeclaration* asClass(const DeclPtr& declaration) {
-   return dynamic_cast<const ClassDeclaration*>(declaration.get());
-}
-
-const FieldDeclaration* asField(const ClassMemberPtr& member) {
-   return dynamic_cast<const FieldDeclaration*>(member.get());
-}
-
-const MethodDeclaration* asMethod(const ClassMemberPtr& member) {
-   return dynamic_cast<const MethodDeclaration*>(member.get());
-}
-
-const ConstructorDeclaration* asConstructor(const ClassMemberPtr& member) {
-   return dynamic_cast<const ConstructorDeclaration*>(member.get());
-}
-
 }
 
 

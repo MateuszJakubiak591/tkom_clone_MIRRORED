@@ -38,6 +38,9 @@ enum class TokenType {
    KwFor,
    KwIn,
 
+   KwBreak,
+   KwContinue,
+
    KwImport,
    KwFrom,
    KwThis,

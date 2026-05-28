@@ -128,41 +128,6 @@ TEST(ParserSimpleTests, ParsePipelineMapExpression) {
    EXPECT_EQ(right->name(), "transform");
 }
 
-TEST(ParserSimpleTests, ParseUserDefinedTypeWithConstructorCall) {
-   std::string code = "mut User user = User()\n";
-   ErrorHandler errHandler("");
-
-   auto program = parseString(code, &errHandler);
-
-   EXPECT_FALSE(errHandler.hasErrors());
-   ASSERT_NE(program, nullptr);
-
-   Statement* stmt = firstStatement(program.get());
-   ASSERT_NE(stmt, nullptr);
-
-   auto* varDecl = dynamic_cast<VariableDeclarationStatement*>(stmt);
-   ASSERT_NE(varDecl, nullptr) << "Węzeł główny to nie VariableDeclarationStatement!";
-
-   EXPECT_TRUE(varDecl->isMutable());
-
-   auto* userType = dynamic_cast<const UserTypeNode*>(&varDecl->type());
-   ASSERT_NE(userType, nullptr) << "Pole type_ to nie UserTypeNode!";
-   EXPECT_EQ(userType->name(), "User");
-
-   ASSERT_EQ(varDecl->names().size(), 1);
-   EXPECT_EQ(varDecl->names()[0].name, "user");
-
-   ASSERT_NE(varDecl->initializer(), nullptr);
-   auto* callExpr = dynamic_cast<const CallExpression*>(varDecl->initializer());
-   ASSERT_NE(callExpr, nullptr) << "Inicjalizator to nie CallExpression!";
-
-   auto* calleeId = dynamic_cast<const IdentifierExpression*>(&callExpr->callee());
-   ASSERT_NE(calleeId, nullptr) << "Obiekt wywoływany (callee_) to nie IdentifierExpression!";
-   EXPECT_EQ(calleeId->name(), "User");
-
-   EXPECT_TRUE(callExpr->arguments().empty());
-}
-
 TEST(ParserSimpleTests, ParseSimpleAddExpression) {
    std::string code = "5 + x\n";
    ErrorHandler errHandler("");
