@@ -1,0 +1,112 @@
+#pragma once
+
+class Program;
+class FunctionDeclaration;
+class GlobalConstantDeclaration;
+class ImportDeclaration;
+
+class Expression;
+class BlockStatement;
+class ExpressionStatement;
+class VariableDeclarationStatement;
+class ReturnStatement;
+class BreakStatement;
+class ContinueStatement;
+class IfStatement;
+class WhileStatement;
+class ForStatement;
+class AssignmentStatement;
+
+class IntLiteralExpression;
+class FloatLiteralExpression;
+class BoolLiteralExpression;
+class CharLiteralExpression;
+class StringLiteralExpression;
+class ListLiteralExpression;
+class IdentifierExpression;
+class ThisExpression;
+class BinaryExpression;
+class AddExpression;
+class SubtractExpression;
+class MultiplyExpression;
+class DivideExpression;
+class PowerExpression;
+class LogicalOrExpression;
+class LogicalAndExpression;
+class EqualExpression;
+class NotEqualExpression;
+class ContainsExpression;
+class LessExpression;
+class LessEqualExpression;
+class GreaterExpression;
+class GreaterEqualExpression;
+class MapExpression;
+class FilterExpression;
+class GroupExpression;
+class NegateExpression;
+class NotExpression;
+class CountExpression;
+class ReverseExpression;
+class FlattenExpression;
+class CastExpression;
+class MemberAccessExpression;
+class CallExpression;
+class IndexExpression;
+class SliceExpression;
+
+class Visitor {
+public:
+   virtual ~Visitor() = default;
+
+   virtual void visit(const Program& node) = 0;
+   virtual void visit(const FunctionDeclaration& node) = 0;
+   virtual void visit(const GlobalConstantDeclaration& node) = 0;
+   virtual void visit(const ImportDeclaration& node) = 0;
+
+   virtual void visit(const BlockStatement& node) = 0;
+   virtual void visit(const ExpressionStatement& node) = 0;
+   virtual void visit(const VariableDeclarationStatement& node) = 0;
+   virtual void visit(const ReturnStatement& node) = 0;
+   virtual void visit(const BreakStatement& node) = 0;
+   virtual void visit(const ContinueStatement& node) = 0;
+   virtual void visit(const IfStatement& node) = 0;
+   virtual void visit(const WhileStatement& node) = 0;
+   virtual void visit(const ForStatement& node) = 0;
+   virtual void visit(const AssignmentStatement& node) = 0;
+
+   virtual void visit(const IntLiteralExpression& node) = 0;
+   virtual void visit(const FloatLiteralExpression& node) = 0;
+   virtual void visit(const BoolLiteralExpression& node) = 0;
+   virtual void visit(const CharLiteralExpression& node) = 0;
+   virtual void visit(const StringLiteralExpression& node) = 0;
+   virtual void visit(const ListLiteralExpression& node) = 0;
+   virtual void visit(const IdentifierExpression& node) = 0;
+   virtual void visit(const ThisExpression& node) = 0;
+   virtual void visit(const AddExpression& node) = 0;
+   virtual void visit(const SubtractExpression& node) = 0;
+   virtual void visit(const MultiplyExpression& node) = 0;
+   virtual void visit(const DivideExpression& node) = 0;
+   virtual void visit(const PowerExpression& node) = 0;
+   virtual void visit(const LogicalOrExpression& node) = 0;
+   virtual void visit(const LogicalAndExpression& node) = 0;
+   virtual void visit(const EqualExpression& node) = 0;
+   virtual void visit(const NotEqualExpression& node) = 0;
+   virtual void visit(const ContainsExpression& node) = 0;
+   virtual void visit(const LessExpression& node) = 0;
+   virtual void visit(const LessEqualExpression& node) = 0;
+   virtual void visit(const GreaterExpression& node) = 0;
+   virtual void visit(const GreaterEqualExpression& node) = 0;
+   virtual void visit(const MapExpression& node) = 0;
+   virtual void visit(const FilterExpression& node) = 0;
+   virtual void visit(const GroupExpression& node) = 0;
+   virtual void visit(const NegateExpression& node) = 0;
+   virtual void visit(const NotExpression& node) = 0;
+   virtual void visit(const CountExpression& node) = 0;
+   virtual void visit(const ReverseExpression& node) = 0;
+   virtual void visit(const FlattenExpression& node) = 0;
+   virtual void visit(const CastExpression& node) = 0;
+   virtual void visit(const MemberAccessExpression& node) = 0;
+   virtual void visit(const CallExpression& node) = 0;
+   virtual void visit(const IndexExpression& node) = 0;
+   virtual void visit(const SliceExpression& node) = 0;
+};

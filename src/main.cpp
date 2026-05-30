@@ -4,6 +4,7 @@
 #include "lexer/Token.hpp"
 #include "source/SourceLocation.hpp"
 #include "parser/Parser.hpp"
+#include "interpreter/Interpreter.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -43,7 +44,20 @@ int main(int argc, char** argv) {
       Lexer lexer(fileSource);
       Parser parser(lexer, &errHandler);
 
-      auto parsedStatements = parser.parseProgram();
+      auto program = parser.parseProgram();
+
+      if (!errHandler.hasErrors()) {
+         std::vector<std::string> programArgs;
+         for (int i = 2; i < argc; ++i) {
+            programArgs.emplace_back(argv[i]);
+         }
+
+         Interpreter interpreter(&errHandler, &std::cout);
+         int exitCode = interpreter.interpret(*program, programArgs);
+
+         errHandler.printErrors(std::cout);
+         return exitCode;
+      }
 
       errHandler.printErrors(std::cout);
    } catch (const std::exception& e) {

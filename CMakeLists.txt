@@ -8,6 +8,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 ########################################################################
 add_library(djm_core
+   src/syntax/Node.cpp
+
    src/source/StringSource.cpp
    src/source/FileSource.cpp
 
@@ -16,6 +18,10 @@ add_library(djm_core
    src/lexer/CharBasicLib.cpp
 
    src/parser/Parser.cpp
+
+   src/interpreter/RuntimeValue.cpp
+   src/interpreter/Environment.cpp
+   src/interpreter/Interpreter.cpp
 
    src/diagnostics/Error.cpp
    src/diagnostics/ErrorHandler.cpp

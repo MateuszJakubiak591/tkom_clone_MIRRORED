@@ -7,6 +7,12 @@ std::string errorTypeToString(ErrorType type) {
 
       case ErrorType::Parser:
          return "Parser";
+
+      case ErrorType::Runtime:
+         return "Runtime";
+
+      case ErrorType::Semantic:
+         return "Semantic";
    }
 
    return "Unknown";

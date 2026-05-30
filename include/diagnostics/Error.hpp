@@ -7,7 +7,9 @@
 
 enum class ErrorType {
    Lexical,
-   Parser
+   Parser,
+   Runtime,
+   Semantic
 };
 
 std::string errorTypeToString(ErrorType type);
