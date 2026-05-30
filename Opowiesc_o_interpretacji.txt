@@ -1,0 +1,580 @@
+1. Nie interpretować bezpośrednio tokenów ani „surowego AST”
+
+Po lekserze i parserze dobrze mieć etap:
+
+kod źródłowy
+→ lexer
+→ parser
+→ AST / drzewo składniowe
+→ drzewo dokumentu / obiekty programu
+→ interpreter
+
+Ważna zasada: drzewo dokumentu nie powinno znać leksera ani parsera. Czyli nie trzymaj w nim np. TokenType::Plus, TokenType::Identifier, całych tokenów itd. Interpreter nie powinien wiedzieć, że operator + powstał z takiego czy innego tokenu.
+
+Zamiast tego:
+
+enum class BinaryOperator {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    And,
+    Or,
+    Equal,
+    Less,
+    Greater
+};
+
+albo jeszcze lepiej: osobne klasy dla ważnych rodzajów wyrażeń, np.:
+
+class AddExpression;
+class LogicalAndExpression;
+class AssignmentExpression;
+
+Czyli parser może używać tokenów, ale AST/dokument ma być już niezależny od tokenizacji.
+
+2. Interpreter jako Visitor
+
+Interpreter powinien odwiedzać węzły programu:
+
+visitProgram()
+→ znajdź funkcję main
+→ wywołaj main
+→ visitBlock()
+→ visitStatement()
+→ visitExpression()
+→ itd.
+
+To jest naturalne, bo interpretacja danego węzła to właśnie „wykonanie” tego węzła. Slajdy mówią wprost: interpreter to też wizytator.
+
+Przykładowo:
+
+class Interpreter : public Visitor {
+public:
+    void visitProgram(Program& program) override;
+    void visitFunctionCall(FunctionCallExpr& call) override;
+    void visitIfStatement(IfStatement& stmt) override;
+    void visitWhileStatement(WhileStatement& stmt) override;
+    void visitReturnStatement(ReturnStatement& stmt) override;
+    void visitAddExpression(AddExpression& expr) override;
+};
+
+Ale uwaga: nie każda wizyta oznacza to samo. Dla funkcji trzeba rozróżnić:
+
+rejestrowanie funkcji w środowisku,
+właściwe wykonanie funkcji.
+
+I to jest bardzo ważna uwaga z materiałów.
+
+3. Nie rejestrować funkcji przez visitFunctionDef
+
+Nie rób tak:
+
+void visitProgram(Program& program) {
+    for (auto& function : program.functions()) {
+        function->accept(*this); // złe, jeśli visitFunctionDef tylko rejestruje
+    }
+}
+
+void visitFunctionDef(FunctionDef& function) {
+    environment.tryAdd(function);
+}
+
+Dlaczego? Bo wtedy visitFunctionDef nie znaczy „wykonaj funkcję”, tylko „zarejestruj funkcję”. To miesza odpowiedzialności.
+
+Lepsze rozwiązanie:
+
+void visitProgram(Program& program) {
+    environment.addBuiltins();
+
+    for (auto& function : program.functions()) {
+        environment.addFunction(function.get());
+    }
+
+    callFunction("main", {});
+}
+
+A visitFunctionDef powinno oznaczać faktyczne wykonanie ciała funkcji:
+
+void visitFunctionDef(FunctionDef& function) {
+    auto& context = environment.currentCallContext();
+
+    bindParameters(function, context.arguments());
+
+    function.body().accept(*this);
+
+    checkReturnType(function);
+}
+
+Czyli:
+
+visitProgram → rejestruje funkcje
+visitFunctionCall → znajduje funkcję i tworzy kontekst wywołania
+visitFunctionDef → wykonuje ciało funkcji
+
+To jest dokładnie kierunek sugerowany na slajdach.
+
+4. Funkcje wbudowane i użytkownika powinny być traktowane podobnie
+
+Nie rób osobnego, sztywnego if dla każdej funkcji wbudowanej:
+
+if (name == "print") {
+    ...
+} else if (name == "len") {
+    ...
+} else {
+    callUserFunction(...);
+}
+
+Lepsze rozwiązanie: mieć wspólny interfejs funkcji.
+
+class Callable {
+public:
+    virtual ~Callable() = default;
+    virtual Value call(Interpreter& interpreter,
+                       std::vector<ValueRef> args) = 0;
+};
+
+Potem:
+
+class UserFunction : public Callable {
+    FunctionDecl* declaration_;
+
+public:
+    Value call(Interpreter& interpreter,
+               std::vector<ValueRef> args) override;
+};
+
+class BuiltinFunction : public Callable {
+public:
+    Value call(Interpreter& interpreter,
+               std::vector<ValueRef> args) override;
+};
+
+Wtedy środowisko ma jedną mapę:
+
+std::unordered_map<std::string, std::unique_ptr<Callable>> functions;
+
+I wywołanie wygląda jednolicie:
+
+auto* function = environment.findFunction(name);
+Value result = function->call(*this, evaluatedArguments);
+
+To realizuje ideę ze slajdów: z punktu widzenia interpretacji wywołania nie powinno mieć znaczenia, czy funkcja jest wbudowana, czy zdefiniowana przez użytkownika.
+
+5. Stos kontekstów wywołań: FunctionCallContext
+
+Dla wywołań funkcji potrzebujesz stosu:
+
+std::vector<FunctionCallContext> callStack;
+
+Każde wywołanie funkcji tworzy nowy kontekst:
+
+main()
+  → call foo()
+      → call bar()
+
+Na stosie masz wtedy:
+
+[ main context ]
+[ foo context  ]
+[ bar context  ] ← aktualny
+
+Po zakończeniu bar() zdejmujesz jego kontekst.
+
+Taki kontekst powinien zawierać np.:
+
+class FunctionCallContext {
+public:
+    Callable* function;
+    SourceLocation callLocation;
+
+    std::vector<Scope> scopes;
+    std::optional<ValueRef> returnValue;
+    bool hasReturned = false;
+};
+
+Slajdy zalecają właśnie strukturę typu stos na FunctionCallContext.
+
+6. Scope’y dla zmiennych lokalnych
+
+Wewnątrz jednej funkcji masz dodatkowo zakresy blokowe:
+
+fun main() {
+    int x = 1;
+
+    if (true) {
+        int x = 2;
+        print(x); // 2
+    }
+
+    print(x); // 1
+}
+
+Dlatego każdy FunctionCallContext powinien mieć stos zakresów:
+
+class Scope {
+public:
+    std::unordered_map<std::string, ValueRef> variables;
+};
+
+A kontekst funkcji:
+
+class FunctionCallContext {
+public:
+    std::vector<Scope> scopes;
+};
+
+Przy wejściu do bloku:
+
+pushScope();
+
+Przy wyjściu z bloku:
+
+popScope();
+
+Wyszukiwanie zmiennej powinno iść od najnowszego scope’u do najstarszego:
+
+ValueRef Environment::findVariable(const std::string& name) {
+    auto& context = currentCallContext();
+
+    for (auto it = context.scopes.rbegin(); it != context.scopes.rend(); ++it) {
+        if (auto found = it->find(name)) {
+            return found;
+        }
+    }
+
+    return globalScope.find(name);
+}
+
+Czyli:
+
+najpierw szukaj w najbliższym bloku
+potem w zewnętrznym bloku
+potem w zakresie funkcji
+potem globalnie
+
+To jest wprost zgodne z wnioskami ze slajdów.
+
+7. Zmienna to nie to samo co wartość
+
+To jest bardzo ważne.
+
+Nie wystarczy myśleć:
+
+std::unordered_map<std::string, Value> variables;
+
+bo wtedy przy przypisaniu i referencjach szybko robi się problem.
+
+Lepiej myśleć:
+
+nazwa zmiennej → referencja do obiektu wartości
+
+Czyli:
+
+using ValueRef = std::shared_ptr<ValueObject>;
+
+Przykład:
+
+class ValueObject {
+public:
+    Type type;
+    RuntimeValue value;
+    bool mutable_;
+};
+
+A RuntimeValue:
+
+using RuntimeValue = std::variant<
+    int32_t,
+    uint32_t,
+    double,
+    bool,
+    char,
+    std::string,
+    ListValue,
+    ObjectValue
+>;
+
+Wtedy scope przechowuje:
+
+std::unordered_map<std::string, ValueRef> variables;
+
+Dlaczego tak? Bo ta sama dana może być widoczna pod kilkoma nazwami, szczególnie przy przekazywaniu przez referencję. Slajdy mówią, że niekoniecznie potrzebujesz osobnego obiektu Variable, ale potrzebujesz mapowania nazwy na „wartość”, a sama wartość czasami powinna być opakowana w obiekt.
+
+8. Przypisanie powinno aktualizować obiekt wartości
+
+Dla kodu:
+
+x = 5
+
+nie powinieneś podmieniać losowo wpisu w mapie, tylko:
+
+znaleźć x,
+sprawdzić, czy jest mutowalny,
+obliczyć prawą stronę,
+sprawdzić typ,
+zaktualizować wartość.
+
+Czyli logicznie:
+
+void Interpreter::visitAssignment(AssignmentExpression& expr) {
+    ValueRef target = resolveAssignable(expr.left());
+    ValueRef newValue = evaluate(expr.right());
+
+    if (!target->isMutable()) {
+        throw RuntimeError("Cannot assign to immutable variable");
+    }
+
+    if (!typesCompatible(target->type(), newValue->type())) {
+        throw RuntimeError("Type mismatch in assignment");
+    }
+
+    target->setValue(copyOrMoveValue(newValue));
+}
+
+To daje prostą obsługę:
+
+mut x = 1
+x = 2
+
+ale też potencjalnie:
+
+fun increment(ref x: int) {
+    x = x + 1
+}
+
+bo x może wskazywać na ten sam ValueObject, co zmienna przekazana z zewnątrz.
+
+9. Argument funkcji ≠ zmienna ≠ wartość
+
+Przy wywołaniu:
+
+foo(a + 1, b)
+
+masz argumenty wywołania:
+
+a + 1
+b
+
+Ale one nie są tym samym.
+
+a + 1 to wyrażenie, które daje tymczasową wartość.
+
+b może być zmienną, czyli nazwą wskazującą na jakiś obiekt wartości.
+
+Dlatego przy wiązaniu parametrów trzeba rozróżnić:
+
+przekazanie przez wartość → skopiuj / utwórz nowy ValueObject
+przekazanie przez referencję → podepnij ten sam ValueObject
+
+Przykład:
+
+void bindParameter(Parameter& param, Argument& arg) {
+    if (param.isReference()) {
+        ValueRef ref = resolveVariableReference(arg.expression());
+        currentScope().define(param.name(), ref);
+    } else {
+        ValueRef value = evaluate(arg.expression());
+        currentScope().define(param.name(), cloneValue(value));
+    }
+}
+
+To jest sens zdania ze slajdów: argument to nie to samo co zmienna czy jej wartość.
+
+10. Ewaluacja wyrażeń logicznych musi być krótkozwarta
+
+Dla:
+
+a and b
+
+jeśli a == false, to b nie powinno się wykonać.
+
+Dla:
+
+a or b
+
+jeśli a == true, to b nie powinno się wykonać.
+
+Czyli nie rób naiwnie:
+
+auto left = evaluate(expr.left());
+auto right = evaluate(expr.right());
+return left && right;
+
+Dla and powinno być:
+
+Value Interpreter::visitLogicalAnd(LogicalAndExpression& expr) {
+    Value left = evaluate(expr.left());
+
+    if (!asBool(left)) {
+        return Value(false);
+    }
+
+    Value right = evaluate(expr.right());
+    return Value(asBool(right));
+}
+
+Dla or:
+
+Value Interpreter::visitLogicalOr(LogicalOrExpression& expr) {
+    Value left = evaluate(expr.left());
+
+    if (asBool(left)) {
+        return Value(true);
+    }
+
+    Value right = evaluate(expr.right());
+    return Value(asBool(right));
+}
+
+To ważne, bo prawa strona może mieć efekty uboczne, np. wywołanie funkcji. Materiały zwracają uwagę na pytanie: czy Average() albo porównanie w ogóle się wykona?
+
+11. Ustal własną kolejność ewaluacji argumentów
+
+Nie zostawiaj tego „jak w C++”, bo tam w niektórych przypadkach kolejność może być problematyczna. W swoim języku powinieneś jawnie ustalić zasadę, np.:
+
+argumenty funkcji są ewaluowane od lewej do prawej
+operandy operatorów są ewaluowane od lewej do prawej
+and/or mają short-circuit
+
+Czyli dla:
+
+foo(a(), b(), c())
+
+zawsze wykonujesz:
+
+a()
+b()
+c()
+foo(...)
+
+To bardzo ułatwia testowanie i zapobiega dziwnym różnicom między implementacjami. Slajdy pokazują przykład z C/C++, gdzie różne kompilatory mogą dawać różne wyniki przy efektach ubocznych.
+
+12. Return, break i continue najlepiej obsłużyć przez sygnały sterujące
+
+Dla:
+
+return x
+
+nie wystarczy tylko „zwrócić wartość z visitReturn”, bo jesteś głęboko w zagnieżdżonych visitBlock, visitIf, visitWhile.
+
+Masz dwie dobre opcje.
+
+Opcja 1: wyjątki sterujące:
+
+class ReturnSignal {
+public:
+    ValueRef value;
+};
+
+I:
+
+void Interpreter::visitReturn(ReturnStatement& stmt) {
+    ValueRef value = evaluate(stmt.expression());
+    throw ReturnSignal(value);
+}
+
+W funkcji:
+
+try {
+    function.body().accept(*this);
+} catch (ReturnSignal& signal) {
+    return signal.value;
+}
+
+Opcja 2: flaga w kontekście:
+
+context.hasReturned = true;
+context.returnValue = value;
+
+I każdy blok sprawdza:
+
+if (context.hasReturned) {
+    break;
+}
+
+Dla prostego interpretera C++ opcja z sygnałami/wyjątkami często jest wygodniejsza.
+
+13. Globalny scope osobno od lokalnych
+
+Zalecany model:
+
+Environment
+├── globalScope
+├── functions
+├── callStack
+│   ├── FunctionCallContext
+│   │   ├── Scope
+│   │   ├── Scope
+│   │   └── Scope
+
+Zmiennych szukasz tak:
+
+1. lokalne scope’y aktualnej funkcji, od najnowszego
+2. globalScope
+3. jeśli nie ma → błąd
+Nie powinno się raczej robić starego Pascalowego mechanizmu: „jak nie ma zmiennej w aktualnej funkcji, szukaj w funkcji, która mnie wywołała”. Slajdy wskazują, że współczesne języki raczej tak nie robią.
+14. Minimalna proponowana struktura klas
+Przykładowo:
+class Interpreter : public Visitor {
+private:
+    Environment environment_;
+
+public:
+    void interpret(Program& program);
+};
+class Environment {
+private:
+    Scope globalScope_;
+    std::unordered_map<std::string, std::unique_ptr<Callable>> functions_;
+    std::vector<FunctionCallContext> callStack_;
+
+public:
+    void addBuiltins();
+    void addFunction(FunctionDecl* function);
+
+    Callable* findFunction(const std::string& name);
+    ValueRef findVariable(const std::string& name);
+
+    void pushCallContext(FunctionCallContext context);
+    void popCallContext();
+
+    void pushScope();
+    void popScope();
+};
+class Scope {
+private:
+    std::unordered_map<std::string, ValueRef> variables_;
+
+public:
+    bool define(const std::string& name, ValueRef value);
+    ValueRef findLocal(const std::string& name);
+};
+class ValueObject {
+private:
+    Type type_;
+    RuntimeValue value_;
+    bool mutable_;
+public:
+    Type type() const;
+    RuntimeValue& value();
+    bool isMutable() const;
+
+    void assign(RuntimeValue newValue);
+};
+Najkrótsze podsumowanie architektury
+Najlepiej zrobić tak:
+Program
+→ interpreter.visitProgram()
+→ zarejestruj funkcje użytkownika i built-iny
+→ znajdź main
+→ utwórz FunctionCallContext dla main
+→ wykonuj ciało funkcji jako Visitor
+→ przy blokach twórz Scope
+→ przy wywołaniach funkcji twórz nowy FunctionCallContext
+→ przy zmiennych szukaj od najnowszego Scope do globalnego Scope
+→ nazwa zmiennej wskazuje na opakowany obiekt wartości
+→ assignment aktualizuje ValueObject
+→ and/or wykonuj short-circuit
+→ argumenty ewaluuj w ustalonej kolejności
