@@ -204,16 +204,22 @@ class ForStatement  : public Statement {
 public:
    ForStatement(
       SourceLocation location,
+      std::unique_ptr<TypeNode> variableType,
       std::string variableName,
       SourceLocation variableLocation,
       ExprPtr iterable,
       std::unique_ptr<BlockStatement> body
    )
       : Statement(std::move(location)),
+        variableType_(std::move(variableType)),
         variableName_(std::move(variableName)),
         variableLocation_(std::move(variableLocation)),
         iterable_(std::move(iterable)),
         body_(std::move(body)) {}
+
+   const TypeNode& variableType() const {
+      return *variableType_;
+   }
 
    const std::string& variableName() const {
       return variableName_;
@@ -232,6 +238,7 @@ public:
    }
 
 private:
+   std::unique_ptr<TypeNode> variableType_;
    std::string variableName_;
    SourceLocation variableLocation_;
    ExprPtr iterable_;

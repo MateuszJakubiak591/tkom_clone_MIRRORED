@@ -922,9 +922,11 @@ StmtPtr Parser::tryParseForStatement() {
    advance();
    SourceLocation location = previous_.location();
 
+   auto variableType = parseValueType();
+
    Token variableToken = consume(
       TokenType::Identifier,
-      "expected loop variable name after 'for'"
+      "expected loop variable name after loop variable type"
    );
 
    consume(TokenType::KwIn, "expected 'in' after loop variable");
@@ -935,6 +937,7 @@ StmtPtr Parser::tryParseForStatement() {
 
    return std::make_unique<ForStatement>(
       location,
+      std::move(variableType),
       variableToken.lexeme(),
       variableToken.location(),
       std::move(iterable),
