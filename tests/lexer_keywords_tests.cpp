@@ -3,6 +3,28 @@
 
 #include "lexer/Token.hpp"
 #include <string>
+#include <vector>
+
+namespace {
+struct SingleTokenCase {
+   std::string source;
+   TokenType type;
+};
+
+void assertSingleToken(const SingleTokenCase& testCase) {
+   const auto tokens = tokenizeString("single_token.djm", testCase.source);
+
+   ASSERT_EQ(tokens.size(), 2);
+   assertToken(tokens[0], testCase.type, testCase.source, 1, 1);
+   assertToken(
+      tokens[1],
+      TokenType::EndOfFile,
+      "",
+      1,
+      static_cast<int>(testCase.source.size()) + 1
+   );
+}
+}
 
 TEST(LexerKeywords, KeywordsAndTypes) {
    const std::string code =
@@ -90,4 +112,48 @@ TEST(LexerKeywords, AllSimpleKeywords) {
    assertToken(tokens[32], TokenType::Newline, "\\n", 6, 21);
 
    assertToken(tokens[33], TokenType::EndOfFile, "", 7, 1);
+}
+
+TEST(LexerKeywords, TokenizesEachKeywordInIsolation) {
+   const std::vector<SingleTokenCase> cases = {
+      {"int", TokenType::KwInt},
+      {"uint", TokenType::KwUint},
+      {"float", TokenType::KwFloat},
+      {"bool", TokenType::KwBool},
+      {"char", TokenType::KwChar},
+      {"string", TokenType::KwString},
+      {"list", TokenType::KwList},
+      {"void", TokenType::KwVoid},
+      {"fun", TokenType::KwFun},
+      {"return", TokenType::KwReturn},
+      {"mut", TokenType::KwMut},
+      {"if", TokenType::KwIf},
+      {"else", TokenType::KwElse},
+      {"while", TokenType::KwWhile},
+      {"for", TokenType::KwFor},
+      {"in", TokenType::KwIn},
+      {"break", TokenType::KwBreak},
+      {"continue", TokenType::KwContinue},
+      {"import", TokenType::KwImport},
+      {"from", TokenType::KwFrom},
+      {"this", TokenType::KwThis},
+   };
+
+   for (const auto& testCase : cases) {
+      assertSingleToken(testCase);
+   }
+}
+
+TEST(LexerKeywords, TokenizesEachWordOperatorInIsolation) {
+   const std::vector<SingleTokenCase> cases = {
+      {"as", TokenType::OpAs},
+      {"contains", TokenType::OpContains},
+      {"count", TokenType::OpCount},
+      {"reverse", TokenType::OpReverse},
+      {"flatten", TokenType::OpFlatten},
+   };
+
+   for (const auto& testCase : cases) {
+      assertSingleToken(testCase);
+   }
 }

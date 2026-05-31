@@ -324,3 +324,91 @@ TEST(ParserSimpleTests, ParseReturnStatementWithValue) {
    auto* retVal = dynamic_cast<const IntLiteralExpression*>(retStmt->expression());
    EXPECT_EQ(retVal->value(), 0);
 }
+
+TEST(ParserSimpleTests, ParseIfStatementWithElseBranch) {
+   std::string code =
+      "if true {\n"
+      "return 1\n"
+      "} else {\n"
+      "return 0\n"
+      "}\n";
+   ErrorHandler errHandler("");
+
+   auto program = parseString(code, &errHandler);
+
+   EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
+   ASSERT_NE(stmt, nullptr);
+
+   auto* ifStmt = dynamic_cast<IfStatement*>(stmt);
+   ASSERT_NE(ifStmt, nullptr);
+
+   auto* condition = dynamic_cast<const BoolLiteralExpression*>(&ifStmt->condition());
+   ASSERT_NE(condition, nullptr);
+   EXPECT_TRUE(condition->value());
+
+   ASSERT_EQ(ifStmt->thenBranch().statements().size(), 1);
+   EXPECT_NE(dynamic_cast<ReturnStatement*>(ifStmt->thenBranch().statements()[0].get()), nullptr);
+
+   auto* elseBlock = dynamic_cast<const BlockStatement*>(ifStmt->elseBranch());
+   ASSERT_NE(elseBlock, nullptr);
+   ASSERT_EQ(elseBlock->statements().size(), 1);
+   EXPECT_NE(dynamic_cast<ReturnStatement*>(elseBlock->statements()[0].get()), nullptr);
+}
+
+TEST(ParserSimpleTests, ParseWhileStatement) {
+   std::string code =
+      "while keepGoing {\n"
+      "continue\n"
+      "}\n";
+   ErrorHandler errHandler("");
+
+   auto program = parseString(code, &errHandler);
+
+   EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
+   ASSERT_NE(stmt, nullptr);
+
+   auto* whileStmt = dynamic_cast<WhileStatement*>(stmt);
+   ASSERT_NE(whileStmt, nullptr);
+
+   auto* condition = dynamic_cast<const IdentifierExpression*>(&whileStmt->condition());
+   ASSERT_NE(condition, nullptr);
+   EXPECT_EQ(condition->name(), "keepGoing");
+
+   ASSERT_EQ(whileStmt->body().statements().size(), 1);
+   EXPECT_NE(dynamic_cast<ContinueStatement*>(whileStmt->body().statements()[0].get()), nullptr);
+}
+
+TEST(ParserSimpleTests, ParseForStatement) {
+   std::string code =
+      "for int item in numbers {\n"
+      "break\n"
+      "}\n";
+   ErrorHandler errHandler("");
+
+   auto program = parseString(code, &errHandler);
+
+   EXPECT_FALSE(errHandler.hasErrors());
+   ASSERT_NE(program, nullptr);
+
+   Statement* stmt = firstStatement(program.get());
+   ASSERT_NE(stmt, nullptr);
+
+   auto* forStmt = dynamic_cast<ForStatement*>(stmt);
+   ASSERT_NE(forStmt, nullptr);
+
+   EXPECT_NE(dynamic_cast<const IntTypeNode*>(&forStmt->variableType()), nullptr);
+   EXPECT_EQ(forStmt->variableName(), "item");
+
+   auto* iterable = dynamic_cast<const IdentifierExpression*>(&forStmt->iterable());
+   ASSERT_NE(iterable, nullptr);
+   EXPECT_EQ(iterable->name(), "numbers");
+
+   ASSERT_EQ(forStmt->body().statements().size(), 1);
+   EXPECT_NE(dynamic_cast<BreakStatement*>(forStmt->body().statements()[0].get()), nullptr);
+}

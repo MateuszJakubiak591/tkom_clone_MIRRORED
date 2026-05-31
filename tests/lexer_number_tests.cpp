@@ -6,6 +6,22 @@
 #include <iostream>
 #include <string>
 
+namespace {
+template <typename T>
+void assertSingleLiteral(
+   const std::string& source,
+   TokenType expectedType,
+   const T& expectedValue
+) {
+   const auto tokens = tokenizeString("single_number.djm", source);
+
+   ASSERT_EQ(tokens.size(), 2);
+   assertToken(tokens[0], expectedType, source, 1, 1);
+   EXPECT_EQ(std::get<T>(tokens[0].value()), expectedValue);
+   assertToken(tokens[1], TokenType::EndOfFile, "", 1, static_cast<int>(source.size()) + 1);
+}
+}
+
 TEST(LexerNumbers, IntegerLiterals) {
    const std::string code =
       "int a = 0\n"
@@ -115,4 +131,18 @@ TEST(LexerNumbers, InvalidNumberLiterals) {
    assertToken(tokens[19], TokenType::Newline, "\\n", 4, 17);
 
    assertToken(tokens[20], TokenType::EndOfFile, "", 5, 1);
+}
+
+TEST(LexerNumbers, TokenizesIntegerLiteralsInIsolation) {
+   assertSingleLiteral<int64_t>("0", TokenType::IntLiteral, 0);
+   assertSingleLiteral<int64_t>("123", TokenType::IntLiteral, 123);
+   assertSingleLiteral<int64_t>("1_000", TokenType::IntLiteral, 1000);
+   assertSingleLiteral<int64_t>("2_147_483_647", TokenType::IntLiteral, 2147483647);
+}
+
+TEST(LexerNumbers, TokenizesFloatLiteralsInIsolation) {
+   assertSingleLiteral<double>("0.0", TokenType::FloatLiteral, 0.0);
+   assertSingleLiteral<double>("123.456", TokenType::FloatLiteral, 123.456);
+   assertSingleLiteral<double>("1_000.25", TokenType::FloatLiteral, 1000.25);
+   assertSingleLiteral<double>("3.141_592", TokenType::FloatLiteral, 3.141592);
 }
