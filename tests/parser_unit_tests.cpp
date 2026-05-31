@@ -50,10 +50,6 @@ std::unique_ptr<Program> parseProgramFromTokens(
    return parser.parseProgram();
 }
 
-const FunctionDeclaration* asFunction(const DeclPtr& declaration) {
-   return dynamic_cast<const FunctionDeclaration*>(declaration.get());
-}
-
 }
 
 
@@ -87,10 +83,10 @@ TEST(ParserUnitExpressionTests, ParsesAdditiveAndMultiplicativePrecedence) {
    ASSERT_FALSE(errorHandler.hasErrors());
    ASSERT_NE(program, nullptr);
 
-   ASSERT_EQ(program->declarations().size(), 1);
+   ASSERT_EQ(program->functionDeclarations().size(), 1);
+   ASSERT_TRUE(program->globalConstantDeclarations().empty());
 
-   const FunctionDeclaration* function = asFunction(program->declarations()[0]);
-   ASSERT_NE(function, nullptr);
+   const FunctionDeclaration* function = program->functionDeclarations()[0].get();
 
    const auto& statements = function->body().statements();
 
@@ -154,10 +150,10 @@ TEST(ParserUnitProgramTests, ParsesMethodCall) {
    ASSERT_FALSE(errorHandler.hasErrors());
    ASSERT_NE(program, nullptr);
 
-   ASSERT_EQ(program->declarations().size(), 1);
+   ASSERT_EQ(program->functionDeclarations().size(), 1);
+   ASSERT_TRUE(program->globalConstantDeclarations().empty());
 
-   const FunctionDeclaration* function = asFunction(program->declarations()[0]);
-   ASSERT_NE(function, nullptr);
+   const FunctionDeclaration* function = program->functionDeclarations()[0].get();
 
    const auto& statements = function->body().statements();
 
@@ -207,7 +203,8 @@ TEST(ParserUnitProgramTests, ParsesImportAllFromTokens) {
    ASSERT_NE(program, nullptr);
 
    ASSERT_EQ(program->imports().size(), 1);
-   EXPECT_TRUE(program->declarations().empty());
+   EXPECT_TRUE(program->functionDeclarations().empty());
+   EXPECT_TRUE(program->globalConstantDeclarations().empty());
 
    const ImportDeclaration& import = *program->imports()[0];
 
@@ -249,10 +246,10 @@ TEST(ParserUnitProgramTests, ParsesFunctionWithoutParametersFromTokens) {
    ASSERT_FALSE(errorHandler.hasErrors());
    ASSERT_NE(program, nullptr);
 
-   ASSERT_EQ(program->declarations().size(), 1);
+   ASSERT_EQ(program->functionDeclarations().size(), 1);
+   ASSERT_TRUE(program->globalConstantDeclarations().empty());
 
-   const FunctionDeclaration* function = asFunction(program->declarations()[0]);
-   ASSERT_NE(function, nullptr);
+   const FunctionDeclaration* function = program->functionDeclarations()[0].get();
 
    EXPECT_EQ(function->name(), "main");
    EXPECT_TRUE(function->parameters().empty());

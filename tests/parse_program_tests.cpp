@@ -42,14 +42,6 @@ ParseResult parseProgramWithErrors(const std::string& code) {
    return result;
 }
 
-const FunctionDeclaration* asFunction(const DeclPtr& declaration) {
-   return dynamic_cast<const FunctionDeclaration*>(declaration.get());
-}
-
-const GlobalConstantDeclaration* asGlobalConstant(const DeclPtr& declaration) {
-   return dynamic_cast<const GlobalConstantDeclaration*>(declaration.get());
-}
-
 const ReturnStatement* asReturnStatement(const StmtPtr& statement) {
    return dynamic_cast<const ReturnStatement*>(statement.get());
 }
@@ -62,7 +54,8 @@ TEST(ParserProgramTests, ParsesEmptyProgram) {
 
    ASSERT_NE(program, nullptr);
    EXPECT_TRUE(program->imports().empty());
-   EXPECT_TRUE(program->declarations().empty());
+   EXPECT_TRUE(program->globalConstantDeclarations().empty());
+   EXPECT_TRUE(program->functionDeclarations().empty());
 }
 
 TEST(ParserProgramTests, ParsesImportAll) {
@@ -73,7 +66,8 @@ TEST(ParserProgramTests, ParsesImportAll) {
    ASSERT_NE(program, nullptr);
 
    ASSERT_EQ(program->imports().size(), 1);
-   EXPECT_TRUE(program->declarations().empty());
+   EXPECT_TRUE(program->globalConstantDeclarations().empty());
+   EXPECT_TRUE(program->functionDeclarations().empty());
 
    const ImportDeclaration& import = *program->imports()[0];
 
@@ -90,7 +84,8 @@ TEST(ParserProgramTests, ParsesNamedImport) {
    ASSERT_NE(program, nullptr);
 
    ASSERT_EQ(program->imports().size(), 1);
-   EXPECT_TRUE(program->declarations().empty());
+   EXPECT_TRUE(program->globalConstantDeclarations().empty());
+   EXPECT_TRUE(program->functionDeclarations().empty());
 
    const ImportDeclaration& import = *program->imports()[0];
 
@@ -115,10 +110,10 @@ TEST(ParserProgramTests, ParsesFunctionWithoutParameters) {
 
    EXPECT_TRUE(program->imports().empty());
 
-   ASSERT_EQ(program->declarations().size(), 1);
+   ASSERT_TRUE(program->globalConstantDeclarations().empty());
+   ASSERT_EQ(program->functionDeclarations().size(), 1);
 
-   const FunctionDeclaration* function = asFunction(program->declarations()[0]);
-   ASSERT_NE(function, nullptr);
+   const FunctionDeclaration* function = program->functionDeclarations()[0].get();
 
    EXPECT_EQ(function->name(), "answer");
    EXPECT_TRUE(function->parameters().empty());
@@ -152,10 +147,10 @@ TEST(ParserProgramTests, ParsesFunctionWithParameters) {
 
    EXPECT_TRUE(program->imports().empty());
 
-   ASSERT_EQ(program->declarations().size(), 1);
+   ASSERT_TRUE(program->globalConstantDeclarations().empty());
+   ASSERT_EQ(program->functionDeclarations().size(), 1);
 
-   const FunctionDeclaration* function = asFunction(program->declarations()[0]);
-   ASSERT_NE(function, nullptr);
+   const FunctionDeclaration* function = program->functionDeclarations()[0].get();
 
    EXPECT_EQ(function->name(), "add");
 
@@ -209,7 +204,8 @@ TEST(ParserProgramTests, ParsesImportsBeforeFunctions) {
    ASSERT_NE(program, nullptr);
 
    ASSERT_EQ(program->imports().size(), 2);
-   ASSERT_EQ(program->declarations().size(), 1);
+   ASSERT_TRUE(program->globalConstantDeclarations().empty());
+   ASSERT_EQ(program->functionDeclarations().size(), 1);
 
    const ImportDeclaration& firstImport = *program->imports()[0];
    EXPECT_TRUE(firstImport.importAll());
@@ -223,8 +219,7 @@ TEST(ParserProgramTests, ParsesImportsBeforeFunctions) {
    EXPECT_EQ(secondImport.importedNames()[1], "helper");
    EXPECT_EQ(secondImport.path(), "users.djm");
 
-   const FunctionDeclaration* function = asFunction(program->declarations()[0]);
-   ASSERT_NE(function, nullptr);
+   const FunctionDeclaration* function = program->functionDeclarations()[0].get();
 
    EXPECT_EQ(function->name(), "main");
 }

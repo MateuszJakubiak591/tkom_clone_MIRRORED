@@ -1177,7 +1177,8 @@ ProgramPtr Parser::parseProgram() {
       skipNewlines();
    }
 
-   std::vector<DeclPtr> declarations;
+   std::vector<GlobalConstDeclPtr> globalConstantDeclarations;
+   std::vector<FunctionDeclPtr> functionDeclarations;
 
    while (!isAtEnd()) {
       skipNewlines();
@@ -1186,14 +1187,15 @@ ProgramPtr Parser::parseProgram() {
          break;
       }
 
-      declarations.push_back(parseTopLevelDeclaration());
+      parseTopLevelDeclaration(globalConstantDeclarations, functionDeclarations);
       skipNewlines();
    }
 
    return std::make_unique<Program>(
       location,
       std::move(imports),
-      std::move(declarations)
+      std::move(globalConstantDeclarations),
+      std::move(functionDeclarations)
    );
 }
 
@@ -1202,13 +1204,18 @@ top_level_decl  =
                 | function_decl
                 | global_const_decl ;
 */
-DeclPtr Parser::parseTopLevelDeclaration() {
+void Parser::parseTopLevelDeclaration(
+   std::vector<GlobalConstDeclPtr>& globalConstantDeclarations,
+   std::vector<FunctionDeclPtr>& functionDeclarations
+) {
    if (auto declaration = tryParseFunctionDeclaration()) {
-      return declaration;
+      functionDeclarations.push_back(std::move(declaration));
+      return;
    }
 
    if (auto declaration = tryParseGlobalConstantDeclaration()) {
-      return declaration;
+      globalConstantDeclarations.push_back(std::move(declaration));
+      return;
    }
 
    errorHandler_->report(

@@ -85,7 +85,10 @@ private:
    StmtPtr tryParseWhileStatement();
    StmtPtr tryParseForStatement();
 
-   DeclPtr parseTopLevelDeclaration();
+   void parseTopLevelDeclaration(
+      std::vector<GlobalConstDeclPtr>& globalConstantDeclarations,
+      std::vector<FunctionDeclPtr>& functionDeclarations
+   );
 
    ImportDeclPtr parseImportDeclaration();
 

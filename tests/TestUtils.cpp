@@ -136,17 +136,11 @@ Statement* firstStatement(Program* program) {
       return nullptr;
    }
 
-   if (program->declarations().empty()) {
+   if (program->functionDeclarations().empty()) {
       return nullptr;
    }
 
-   auto* function = dynamic_cast<FunctionDeclaration*>(
-      program->declarations()[0].get()
-   );
-
-   if (function == nullptr) {
-      return nullptr;
-   }
+   auto* function = program->functionDeclarations()[0].get();
 
    const auto& statements = function->body().statements();
 

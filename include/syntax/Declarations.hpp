@@ -140,23 +140,30 @@ public:
    Program(
       SourceLocation location,
       std::vector<ImportDeclPtr> imports,
-      std::vector<DeclPtr> declarations
+      std::vector<GlobalConstDeclPtr> globalConstantDeclarations,
+      std::vector<FunctionDeclPtr> functionDeclarations
    )
       : Node(std::move(location)),
         imports_(std::move(imports)),
-        declarations_(std::move(declarations)) {}
+        globalConstantDeclarations_(std::move(globalConstantDeclarations)),
+        functionDeclarations_(std::move(functionDeclarations)) {}
 
    const std::vector<ImportDeclPtr>& imports() const {
       return imports_;
    }
 
-   const std::vector<DeclPtr>& declarations() const {
-      return declarations_;
+   const std::vector<GlobalConstDeclPtr>& globalConstantDeclarations() const {
+      return globalConstantDeclarations_;
+   }
+
+   const std::vector<FunctionDeclPtr>& functionDeclarations() const {
+      return functionDeclarations_;
    }
 
 private:
    std::vector<ImportDeclPtr> imports_;
-   std::vector<DeclPtr> declarations_;
+   std::vector<GlobalConstDeclPtr> globalConstantDeclarations_;
+   std::vector<FunctionDeclPtr> functionDeclarations_;
 };
 
 using ProgramPtr = std::unique_ptr<Program>;

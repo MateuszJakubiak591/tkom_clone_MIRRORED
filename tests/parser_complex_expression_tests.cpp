@@ -39,13 +39,11 @@ ParsedExpression parseExpressionFromString(
 
    auto program = parser.parseProgram();
 
-   if (program == nullptr || program->declarations().empty()) {
+   if (program == nullptr || program->functionDeclarations().empty()) {
       return {std::move(program), nullptr};
    }
 
-   const auto* function = dynamic_cast<const FunctionDeclaration*>(
-      program->declarations()[0].get()
-   );
+   const auto* function = program->functionDeclarations()[0].get();
 
    if (function == nullptr || function->body().statements().empty()) {
       return {std::move(program), nullptr};

@@ -102,16 +102,12 @@ Value Interpreter::executeUserFunction(const FunctionDeclaration& declaration, c
 void Interpreter::visit(const Program& node) {
    environment_.addBuiltins();
 
-   for (const auto& declaration : node.declarations()) {
-      if (const auto* function = dynamic_cast<const FunctionDeclaration*>(declaration.get())) {
-         environment_.addFunction(*function);
-      }
+   for (const auto& function : node.functionDeclarations()) {
+      environment_.addFunction(*function);
    }
 
-   for (const auto& declaration : node.declarations()) {
-      if (dynamic_cast<const GlobalConstantDeclaration*>(declaration.get())) {
-         declaration->accept(*this);
-      }
+   for (const auto& declaration : node.globalConstantDeclarations()) {
+      declaration->accept(*this);
    }
 
    Callable& main = environment_.findFunction("main", node.location());
