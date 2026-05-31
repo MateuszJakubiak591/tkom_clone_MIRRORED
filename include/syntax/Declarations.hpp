@@ -20,6 +20,7 @@ public:
 
 using DeclPtr = std::unique_ptr<Declaration>;
 
+
 struct ParameterNode {
    std::string name;
    SourceLocation location;
@@ -56,6 +57,8 @@ public:
    const BlockStatement& body() const {
       return *body_;
    }
+
+   void accept(Visitor& visitor) const override;
 
 private:
    std::string name_;
@@ -94,6 +97,8 @@ public:
       return initializer_.get();
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    std::unique_ptr<TypeNode> type_;
    std::vector<VariableDeclarator> names_;
@@ -126,6 +131,8 @@ public:
    const std::string& path() const {
       return path_;
    }
+
+   void accept(Visitor& visitor) const override;
 
 private:
    bool importAll_;
@@ -160,6 +167,8 @@ public:
       return functionDeclarations_;
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    std::vector<ImportDeclPtr> imports_;
    std::vector<GlobalConstDeclPtr> globalConstantDeclarations_;
@@ -167,3 +176,4 @@ private:
 };
 
 using ProgramPtr = std::unique_ptr<Program>;
+

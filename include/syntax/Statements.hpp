@@ -28,6 +28,7 @@ public:
 
 using StmtPtr = std::unique_ptr<Statement>;
 
+
 /*
 block = "{" , { statement } , "}" ;
 */
@@ -42,6 +43,8 @@ public:
       return statements_;
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    std::vector<StmtPtr> statements_;
 };
@@ -55,6 +58,8 @@ public:
    const Expression& expression() const {
       return *expression_;
    }
+
+   void accept(Visitor& visitor) const override;
 
 private:
    ExprPtr expression_;
@@ -107,6 +112,8 @@ public:
       return initializer_.get();
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    bool isMutable_;
    std::unique_ptr<TypeNode> type_;
@@ -129,6 +136,8 @@ public:
       return expression_.get();
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    ExprPtr expression_;
 };
@@ -137,12 +146,16 @@ class BreakStatement final : public Statement {
 public:
    explicit BreakStatement(SourceLocation location)
       : Statement(std::move(location)) {}
+
+   void accept(Visitor& visitor) const override;
 };
 
 class ContinueStatement final : public Statement {
 public:
    explicit ContinueStatement(SourceLocation location)
       : Statement(std::move(location)) {}
+
+   void accept(Visitor& visitor) const override;
 };
 
 class IfStatement  : public Statement {
@@ -170,6 +183,8 @@ public:
       return elseBranch_.get();
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    ExprPtr condition_;
    std::unique_ptr<BlockStatement> thenBranch_;
@@ -194,6 +209,8 @@ public:
    const BlockStatement& body() const {
       return *body_;
    }
+
+   void accept(Visitor& visitor) const override;
 
 private:
    ExprPtr condition_;
@@ -236,6 +253,8 @@ public:
    const BlockStatement& body() const {
       return *body_;
    }
+
+   void accept(Visitor& visitor) const override;
 
 private:
    std::unique_ptr<TypeNode> variableType_;
@@ -318,7 +337,10 @@ public:
       return *value_;
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    ExprPtr target_;
    ExprPtr value_;
 };
+

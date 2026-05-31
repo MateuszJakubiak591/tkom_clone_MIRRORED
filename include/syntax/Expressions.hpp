@@ -17,6 +17,7 @@ public:
 
 using ExprPtr = std::unique_ptr<Expression>;
 
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class IntLiteralExpression final : public Expression {
@@ -28,6 +29,8 @@ public:
    int64_t value() const {
       return value_;
    }
+
+   void accept(Visitor& visitor) const override;
 
 private:
    int64_t value_;
@@ -43,6 +46,8 @@ public:
       return value_;
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    double value_;
 };
@@ -56,6 +61,8 @@ public:
    bool value() const {
       return value_;
    }
+
+   void accept(Visitor& visitor) const override;
 
 private:
    bool value_;
@@ -71,6 +78,8 @@ public:
       return value_;
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    char value_;
 };
@@ -84,6 +93,8 @@ public:
    const std::string& value() const {
       return value_;
    }
+
+   void accept(Visitor& visitor) const override;
 
 private:
    std::string value_;
@@ -99,6 +110,8 @@ public:
       return elements_;
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    std::vector<ExprPtr> elements_;
 };
@@ -113,6 +126,8 @@ public:
       return name_;
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    std::string name_;
 };
@@ -121,6 +136,8 @@ class ThisExpression final : public Expression {
 public:
    explicit ThisExpression(SourceLocation location)
       : Expression(std::move(location)) {}
+
+   void accept(Visitor& visitor) const override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -204,86 +221,103 @@ private:
 class AddExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class SubtractExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class MultiplyExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class DivideExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class PowerExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class LogicalOrExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class LogicalAndExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class EqualExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class NotEqualExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class ContainsExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class LessExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class LessEqualExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class GreaterExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class GreaterEqualExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class MapExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class FilterExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class GroupExpression final : public BinaryExpression {
 public:
    using BinaryExpression::BinaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -313,26 +347,31 @@ private:
 class NegateExpression final : public UnaryExpression {
 public:
    using UnaryExpression::UnaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class NotExpression final : public UnaryExpression {
 public:
    using UnaryExpression::UnaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class CountExpression final : public UnaryExpression {
 public:
    using UnaryExpression::UnaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class ReverseExpression final : public UnaryExpression {
 public:
    using UnaryExpression::UnaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 class FlattenExpression final : public UnaryExpression {
 public:
    using UnaryExpression::UnaryExpression;
+   void accept(Visitor& visitor) const override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -351,6 +390,8 @@ public:
    const TypeNode& targetType() const {
       return *targetType_;
    }
+
+   void accept(Visitor& visitor) const override;
 
 private:
    ExprPtr expression_;
@@ -378,6 +419,8 @@ public:
       return memberName_;
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    ExprPtr object_;
    std::string memberName_;
@@ -398,6 +441,8 @@ public:
       return arguments_;
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    ExprPtr callee_;
    std::vector<ExprPtr> arguments_;
@@ -417,6 +462,8 @@ public:
    const Expression& index() const {
       return *index_;
    }
+
+   void accept(Visitor& visitor) const override;
 
 private:
    ExprPtr object_;
@@ -448,8 +495,11 @@ public:
       return end_.get();
    }
 
+   void accept(Visitor& visitor) const override;
+
 private:
    ExprPtr object_;
    ExprPtr start_; // dopuszczalne nullptr dla xs[:2]
    ExprPtr end_;   // analogicznie nullptr dla xs[2:]
 };
+
