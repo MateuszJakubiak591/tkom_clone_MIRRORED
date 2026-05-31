@@ -8,7 +8,8 @@
 
 #include "syntax/Type.hpp"
 
-struct RuntimeType {
+class RuntimeType {
+public:
    enum class Kind {
       Void,
       Int,
@@ -20,9 +21,6 @@ struct RuntimeType {
       List
    };
 
-   Kind kind = Kind::Void;
-   std::shared_ptr<RuntimeType> elementType;
-
    static RuntimeType voidType();
    static RuntimeType intType();
    static RuntimeType uintType();
@@ -32,19 +30,28 @@ struct RuntimeType {
    static RuntimeType stringType();
    static RuntimeType listOf(RuntimeType elementType);
 
+   Kind kind() const;
+   const RuntimeType& elementType() const;
+
    bool operator==(const RuntimeType& other) const;
    bool operator!=(const RuntimeType& other) const;
    std::string toString() const;
+
+private:
+   RuntimeType(Kind kind, std::shared_ptr<RuntimeType> elementType = nullptr);
+
+   Kind kind_;
+   std::shared_ptr<RuntimeType> elementType_;
 };
 
 RuntimeType runtimeTypeFromNode(const TypeNode& node);
 
-struct Value;
+class Value;
 using ValueList = std::vector<Value>;
 
-struct Value {
-   RuntimeType type;
-   std::variant<
+class Value {
+public:
+   using Data = std::variant<
       std::monostate,
       int64_t,
       uint64_t,
@@ -53,7 +60,7 @@ struct Value {
       char,
       std::string,
       ValueList
-   > data;
+   >;
 
    static Value voidValue();
    static Value intValue(int64_t value);
@@ -64,7 +71,16 @@ struct Value {
    static Value stringValue(std::string value);
    static Value listValue(RuntimeType elementType, ValueList elements);
 
+   const RuntimeType& type() const;
+   const Data& data() const;
+
    std::string toString() const;
+
+private:
+   Value(RuntimeType type, Data data);
+
+   RuntimeType type_;
+   Data data_;
 };
 
 class ValueObject {

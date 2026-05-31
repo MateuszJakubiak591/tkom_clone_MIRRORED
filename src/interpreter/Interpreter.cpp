@@ -11,33 +11,33 @@
 
 namespace {
 bool isNumeric(const RuntimeType& type) {
-   return type.kind == RuntimeType::Kind::Int ||
-          type.kind == RuntimeType::Kind::Uint ||
-          type.kind == RuntimeType::Kind::Float ||
-          type.kind == RuntimeType::Kind::Char;
+   return type.kind() == RuntimeType::Kind::Int ||
+          type.kind() == RuntimeType::Kind::Uint ||
+          type.kind() == RuntimeType::Kind::Float ||
+          type.kind() == RuntimeType::Kind::Char;
 }
 
 int64_t toSignedInteger(const Value& value) {
-   switch (value.type.kind) {
-      case RuntimeType::Kind::Int: return std::get<int64_t>(value.data);
-      case RuntimeType::Kind::Uint: return static_cast<int64_t>(std::get<uint64_t>(value.data));
-      case RuntimeType::Kind::Char: return static_cast<unsigned char>(std::get<char>(value.data));
+   switch (value.type().kind()) {
+      case RuntimeType::Kind::Int: return std::get<int64_t>(value.data());
+      case RuntimeType::Kind::Uint: return static_cast<int64_t>(std::get<uint64_t>(value.data()));
+      case RuntimeType::Kind::Char: return static_cast<unsigned char>(std::get<char>(value.data()));
       default: return 0;
    }
 }
 
 double toDouble(const Value& value) {
-   switch (value.type.kind) {
-      case RuntimeType::Kind::Float: return std::get<double>(value.data);
-      case RuntimeType::Kind::Int: return static_cast<double>(std::get<int64_t>(value.data));
-      case RuntimeType::Kind::Uint: return static_cast<double>(std::get<uint64_t>(value.data));
-      case RuntimeType::Kind::Char: return static_cast<unsigned char>(std::get<char>(value.data));
+   switch (value.type().kind()) {
+      case RuntimeType::Kind::Float: return std::get<double>(value.data());
+      case RuntimeType::Kind::Int: return static_cast<double>(std::get<int64_t>(value.data()));
+      case RuntimeType::Kind::Uint: return static_cast<double>(std::get<uint64_t>(value.data()));
+      case RuntimeType::Kind::Char: return static_cast<unsigned char>(std::get<char>(value.data()));
       default: return 0.0;
    }
 }
 
 Value makeNumericResult(const RuntimeType& type, double floatValue, int64_t intValue) {
-   switch (type.kind) {
+   switch (type.kind()) {
       case RuntimeType::Kind::Int: return Value::intValue(intValue);
       case RuntimeType::Kind::Uint: return Value::uintValue(static_cast<uint64_t>(intValue));
       case RuntimeType::Kind::Float: return Value::floatValue(floatValue);
@@ -233,13 +233,13 @@ void Interpreter::visit(const ForStatement& node) {
    Value iterable = evaluate(node.iterable());
    RuntimeType loopType = runtimeTypeFromNode(node.variableType());
 
-   if (iterable.type.kind != RuntimeType::Kind::List || *iterable.type.elementType != loopType) {
+   if (iterable.type().kind() != RuntimeType::Kind::List || iterable.type().elementType() != loopType) {
       throw RuntimeError("for iterable must be " + RuntimeType::listOf(loopType).toString(), node.iterable().location());
    }
 
    environment_.pushScope();
    try {
-      for (const auto& element : std::get<ValueList>(iterable.data)) {
+      for (const auto& element : std::get<ValueList>(iterable.data())) {
          environment_.pushScope();
          environment_.defineVariable(
             node.variableName(),
@@ -288,8 +288,8 @@ void Interpreter::visit(const ListLiteralExpression& node) {
    for (const auto& element : node.elements()) {
       Value value = evaluate(*element);
       if (!elementType) {
-         elementType = value.type;
-      } else if (value.type != *elementType) {
+         elementType = value.type();
+      } else if (value.type() != *elementType) {
          throw RuntimeError("mixed type list literal is not supported", element->location());
       }
       values.push_back(std::move(value));
@@ -314,16 +314,16 @@ void Interpreter::visit(const AddExpression& node) {
    Value left = evaluate(node.left());
    Value right = evaluate(node.right());
 
-   if (left.type.kind == RuntimeType::Kind::String && right.type.kind == RuntimeType::Kind::String) {
-      lastValue_ = Value::stringValue(std::get<std::string>(left.data) + std::get<std::string>(right.data));
+   if (left.type().kind() == RuntimeType::Kind::String && right.type().kind() == RuntimeType::Kind::String) {
+      lastValue_ = Value::stringValue(std::get<std::string>(left.data()) + std::get<std::string>(right.data()));
       return;
    }
 
-   if (left.type.kind == RuntimeType::Kind::List && right.type.kind == RuntimeType::Kind::List && left.type == right.type) {
-      ValueList merged = std::get<ValueList>(left.data);
-      const auto& rhs = std::get<ValueList>(right.data);
+   if (left.type().kind() == RuntimeType::Kind::List && right.type().kind() == RuntimeType::Kind::List && left.type() == right.type()) {
+      ValueList merged = std::get<ValueList>(left.data());
+      const auto& rhs = std::get<ValueList>(right.data());
       merged.insert(merged.end(), rhs.begin(), rhs.end());
-      lastValue_ = Value::listValue(*left.type.elementType, std::move(merged));
+      lastValue_ = Value::listValue(left.type().elementType(), std::move(merged));
       return;
    }
 
@@ -360,11 +360,11 @@ void Interpreter::visit(const ContainsExpression& node) {
    Value left = evaluate(node.left());
    Value right = evaluate(node.right());
 
-   if (left.type.kind != RuntimeType::Kind::List) {
+   if (left.type().kind() != RuntimeType::Kind::List) {
       throw RuntimeError("left operand of contains must be a list", node.left().location());
    }
 
-   const auto& elements = std::get<ValueList>(left.data);
+   const auto& elements = std::get<ValueList>(left.data());
    lastValue_ = Value::boolValue(std::any_of(elements.begin(), elements.end(), [&](const Value& element) {
       return valuesEqual(element, right);
    }));
@@ -377,17 +377,17 @@ void Interpreter::visit(const GreaterEqualExpression& node) { lastValue_ = evalu
 
 void Interpreter::visit(const MapExpression& node) {
    Value list = evaluate(node.left());
-   if (list.type.kind != RuntimeType::Kind::List) {
+   if (list.type().kind() != RuntimeType::Kind::List) {
       throw RuntimeError("map operator requires list on the left side", node.left().location());
    }
 
    ValueList mapped;
    std::optional<RuntimeType> elementType;
-   for (const auto& element : std::get<ValueList>(list.data)) {
+   for (const auto& element : std::get<ValueList>(list.data())) {
       Value value = evaluateWithThis(node.right(), element);
       if (!elementType) {
-         elementType = value.type;
-      } else if (value.type != *elementType) {
+         elementType = value.type();
+      } else if (value.type() != *elementType) {
          throw RuntimeError("map expression must produce homogeneous list", node.right().location());
       }
       mapped.push_back(std::move(value));
@@ -398,33 +398,33 @@ void Interpreter::visit(const MapExpression& node) {
 
 void Interpreter::visit(const FilterExpression& node) {
    Value list = evaluate(node.left());
-   if (list.type.kind != RuntimeType::Kind::List) {
+   if (list.type().kind() != RuntimeType::Kind::List) {
       throw RuntimeError("filter operator requires list on the left side", node.left().location());
    }
 
    ValueList filtered;
-   for (const auto& element : std::get<ValueList>(list.data)) {
+   for (const auto& element : std::get<ValueList>(list.data())) {
       if (asBool(evaluateWithThis(node.right(), element), node.right().location())) {
          filtered.push_back(cloneValue(element));
       }
    }
 
-   lastValue_ = Value::listValue(*list.type.elementType, std::move(filtered));
+   lastValue_ = Value::listValue(list.type().elementType(), std::move(filtered));
 }
 
 void Interpreter::visit(const GroupExpression& node) {
    Value left = evaluate(node.left());
    Value right = evaluate(node.right());
 
-   if (left.type.kind != RuntimeType::Kind::List ||
-       right.type.kind != RuntimeType::Kind::List ||
-       left.type != right.type) {
+   if (left.type().kind() != RuntimeType::Kind::List ||
+       right.type().kind() != RuntimeType::Kind::List ||
+       left.type() != right.type()) {
       throw RuntimeError("group operator requires lists of the same type", node.location());
    }
 
    ValueList grouped;
-   const auto& rightElements = std::get<ValueList>(right.data);
-   for (const auto& element : std::get<ValueList>(left.data)) {
+   const auto& rightElements = std::get<ValueList>(right.data());
+   for (const auto& element : std::get<ValueList>(left.data())) {
       if (std::any_of(rightElements.begin(), rightElements.end(), [&](const Value& candidate) {
          return valuesEqual(element, candidate);
       })) {
@@ -432,19 +432,19 @@ void Interpreter::visit(const GroupExpression& node) {
       }
    }
 
-   lastValue_ = Value::listValue(*left.type.elementType, std::move(grouped));
+   lastValue_ = Value::listValue(left.type().elementType(), std::move(grouped));
 }
 
 void Interpreter::visit(const NegateExpression& node) {
    Value value = evaluate(node.operand());
-   if (!isNumeric(value.type)) {
+   if (!isNumeric(value.type())) {
       throw RuntimeError("unary '-' requires numeric operand", node.location());
    }
 
-   if (value.type.kind == RuntimeType::Kind::Float) {
-      lastValue_ = Value::floatValue(-std::get<double>(value.data));
+   if (value.type().kind() == RuntimeType::Kind::Float) {
+      lastValue_ = Value::floatValue(-std::get<double>(value.data()));
    } else {
-      lastValue_ = makeNumericResult(value.type, -toDouble(value), -toSignedInteger(value));
+      lastValue_ = makeNumericResult(value.type(), -toDouble(value), -toSignedInteger(value));
    }
 }
 
@@ -455,12 +455,12 @@ void Interpreter::visit(const NotExpression& node) {
 
 void Interpreter::visit(const CountExpression& node) {
    Value value = evaluate(node.operand());
-   if (value.type.kind == RuntimeType::Kind::String) {
-      lastValue_ = Value::intValue(static_cast<int64_t>(std::get<std::string>(value.data).size()));
+   if (value.type().kind() == RuntimeType::Kind::String) {
+      lastValue_ = Value::intValue(static_cast<int64_t>(std::get<std::string>(value.data()).size()));
       return;
    }
-   if (value.type.kind == RuntimeType::Kind::List) {
-      lastValue_ = Value::intValue(static_cast<int64_t>(std::get<ValueList>(value.data).size()));
+   if (value.type().kind() == RuntimeType::Kind::List) {
+      lastValue_ = Value::intValue(static_cast<int64_t>(std::get<ValueList>(value.data()).size()));
       return;
    }
    throw RuntimeError("count requires string or list", node.location());
@@ -468,16 +468,16 @@ void Interpreter::visit(const CountExpression& node) {
 
 void Interpreter::visit(const ReverseExpression& node) {
    Value value = evaluate(node.operand());
-   if (value.type.kind == RuntimeType::Kind::String) {
-      auto text = std::get<std::string>(value.data);
+   if (value.type().kind() == RuntimeType::Kind::String) {
+      auto text = std::get<std::string>(value.data());
       std::reverse(text.begin(), text.end());
       lastValue_ = Value::stringValue(std::move(text));
       return;
    }
-   if (value.type.kind == RuntimeType::Kind::List) {
-      auto elements = std::get<ValueList>(value.data);
+   if (value.type().kind() == RuntimeType::Kind::List) {
+      auto elements = std::get<ValueList>(value.data());
       std::reverse(elements.begin(), elements.end());
-      lastValue_ = Value::listValue(*value.type.elementType, std::move(elements));
+      lastValue_ = Value::listValue(value.type().elementType(), std::move(elements));
       return;
    }
    throw RuntimeError("reverse requires string or list", node.location());
@@ -485,15 +485,15 @@ void Interpreter::visit(const ReverseExpression& node) {
 
 void Interpreter::visit(const FlattenExpression& node) {
    Value value = evaluate(node.operand());
-   if (value.type.kind != RuntimeType::Kind::List ||
-       value.type.elementType->kind != RuntimeType::Kind::List) {
+   if (value.type().kind() != RuntimeType::Kind::List ||
+       value.type().elementType().kind() != RuntimeType::Kind::List) {
       throw RuntimeError("flatten requires nested list", node.location());
    }
 
-   RuntimeType elementType = *value.type.elementType->elementType;
+   RuntimeType elementType = value.type().elementType().elementType();
    ValueList flattened;
-   for (const auto& nested : std::get<ValueList>(value.data)) {
-      const auto& nestedElements = std::get<ValueList>(nested.data);
+   for (const auto& nested : std::get<ValueList>(value.data())) {
+      const auto& nestedElements = std::get<ValueList>(nested.data());
       flattened.insert(flattened.end(), nestedElements.begin(), nestedElements.end());
    }
 
@@ -530,18 +530,18 @@ void Interpreter::visit(const CallExpression& node) {
 void Interpreter::visit(const IndexExpression& node) {
    Value object = evaluate(node.object());
    Value index = evaluate(node.index());
-   if (index.type.kind != RuntimeType::Kind::Int) {
+   if (index.type().kind() != RuntimeType::Kind::Int) {
       throw RuntimeError("index must be int", node.index().location());
    }
 
-   int64_t rawIndex = std::get<int64_t>(index.data);
+   int64_t rawIndex = std::get<int64_t>(index.data());
    if (rawIndex < 0) {
       throw RuntimeError("index cannot be negative", node.index().location());
    }
 
    std::size_t i = static_cast<std::size_t>(rawIndex);
-   if (object.type.kind == RuntimeType::Kind::String) {
-      const auto& text = std::get<std::string>(object.data);
+   if (object.type().kind() == RuntimeType::Kind::String) {
+      const auto& text = std::get<std::string>(object.data());
       if (i >= text.size()) {
          throw RuntimeError("string index out of range", node.location());
       }
@@ -549,8 +549,8 @@ void Interpreter::visit(const IndexExpression& node) {
       return;
    }
 
-   if (object.type.kind == RuntimeType::Kind::List) {
-      const auto& elements = std::get<ValueList>(object.data);
+   if (object.type().kind() == RuntimeType::Kind::List) {
+      const auto& elements = std::get<ValueList>(object.data());
       if (i >= elements.size()) {
          throw RuntimeError("list index out of range", node.location());
       }
@@ -563,7 +563,7 @@ void Interpreter::visit(const IndexExpression& node) {
 
 void Interpreter::visit(const SliceExpression& node) {
    Value object = evaluate(node.object());
-   if (object.type.kind != RuntimeType::Kind::List && object.type.kind != RuntimeType::Kind::String) {
+   if (object.type().kind() != RuntimeType::Kind::List && object.type().kind() != RuntimeType::Kind::String) {
       throw RuntimeError("slicing requires string or list", node.object().location());
    }
 
@@ -572,14 +572,14 @@ void Interpreter::visit(const SliceExpression& node) {
          return fallback;
       }
       Value value = evaluate(*expression);
-      if (value.type.kind != RuntimeType::Kind::Int || std::get<int64_t>(value.data) < 0) {
+      if (value.type().kind() != RuntimeType::Kind::Int || std::get<int64_t>(value.data()) < 0) {
          throw RuntimeError("slice index must be non-negative int", expression->location());
       }
-      return static_cast<std::size_t>(std::get<int64_t>(value.data));
+      return static_cast<std::size_t>(std::get<int64_t>(value.data()));
    };
 
-   if (object.type.kind == RuntimeType::Kind::String) {
-      const auto& text = std::get<std::string>(object.data);
+   if (object.type().kind() == RuntimeType::Kind::String) {
+      const auto& text = std::get<std::string>(object.data());
       std::size_t start = std::min(readIndex(node.start(), 0), text.size());
       std::size_t end = std::min(readIndex(node.end(), text.size()), text.size());
       if (end < start) {
@@ -589,14 +589,14 @@ void Interpreter::visit(const SliceExpression& node) {
       return;
    }
 
-   const auto& elements = std::get<ValueList>(object.data);
+   const auto& elements = std::get<ValueList>(object.data());
    std::size_t start = std::min(readIndex(node.start(), 0), elements.size());
    std::size_t end = std::min(readIndex(node.end(), elements.size()), elements.size());
    if (end < start) {
       end = start;
    }
    ValueList sliced(elements.begin() + static_cast<std::ptrdiff_t>(start), elements.begin() + static_cast<std::ptrdiff_t>(end));
-   lastValue_ = Value::listValue(*object.type.elementType, std::move(sliced));
+   lastValue_ = Value::listValue(object.type().elementType(), std::move(sliced));
 }
 
 Value Interpreter::evaluate(const Expression& expression) {
@@ -633,11 +633,11 @@ Value Interpreter::evaluateBinaryNumeric(const BinaryExpression& node, char oper
    Value left = evaluate(node.left());
    Value right = evaluate(node.right());
 
-   if (left.type != right.type || !isNumeric(left.type)) {
+   if (left.type() != right.type() || !isNumeric(left.type())) {
       throw RuntimeError("numeric operator requires operands of the same numeric type", node.location());
    }
 
-   if (left.type.kind == RuntimeType::Kind::Float) {
+   if (left.type().kind() == RuntimeType::Kind::Float) {
       double l = toDouble(left);
       double r = toDouble(right);
       switch (operation) {
@@ -666,7 +666,7 @@ Value Interpreter::evaluateBinaryNumeric(const BinaryExpression& node, char oper
       case '^': result = static_cast<int64_t>(std::pow(static_cast<double>(l), static_cast<double>(r))); break;
    }
 
-   return makeNumericResult(left.type, static_cast<double>(result), result);
+   return makeNumericResult(left.type(), static_cast<double>(result), result);
 }
 
 Value Interpreter::evaluateComparison(const BinaryExpression& node, const std::string& operation) {
@@ -687,39 +687,39 @@ Value Interpreter::evaluateComparison(const BinaryExpression& node, const std::s
 }
 
 Value Interpreter::coerceForAssignment(Value value, const RuntimeType& targetType, const SourceLocation& location) {
-   if (targetType.kind == RuntimeType::Kind::Void) {
-      if (value.type.kind == RuntimeType::Kind::Void) {
+   if (targetType.kind() == RuntimeType::Kind::Void) {
+      if (value.type().kind() == RuntimeType::Kind::Void) {
          return value;
       }
       throw RuntimeError("cannot assign value to void", location);
    }
 
-   if (value.type == targetType) {
+   if (value.type() == targetType) {
       return value;
    }
 
-   if (value.type.kind == RuntimeType::Kind::List &&
-       targetType.kind == RuntimeType::Kind::List &&
-       std::get<ValueList>(value.data).empty()) {
-      return Value::listValue(*targetType.elementType, {});
+   if (value.type().kind() == RuntimeType::Kind::List &&
+       targetType.kind() == RuntimeType::Kind::List &&
+       std::get<ValueList>(value.data()).empty()) {
+      return Value::listValue(targetType.elementType(), {});
    }
 
-   if (isNumeric(value.type) && isNumeric(targetType)) {
+   if (isNumeric(value.type()) && isNumeric(targetType)) {
       try {
          return castValue(value, targetType);
       } catch (const std::runtime_error&) {
       }
    }
 
-   throw RuntimeError("cannot assign " + value.type.toString() + " to " + targetType.toString(), location);
+   throw RuntimeError("cannot assign " + value.type().toString() + " to " + targetType.toString(), location);
 }
 
 bool Interpreter::asBool(const Value& value, const SourceLocation& location) const {
-   if (value.type.kind != RuntimeType::Kind::Bool) {
+   if (value.type().kind() != RuntimeType::Kind::Bool) {
       throw RuntimeError("condition must be bool", location);
    }
 
-   return std::get<bool>(value.data);
+   return std::get<bool>(value.data());
 }
 
 void Interpreter::reportRuntimeError(const RuntimeError& error) {
