@@ -1,16 +1,30 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <string>
+#include <sstream>
 #include <utility>
 
+#include "diagnostics/ErrorHandler.hpp"
 #include "interpreter/RuntimeValue.hpp"
+#include "interpreter/Interpreter.hpp"
+#include "lexer/Lexer.hpp"
+#include "parser/Parser.hpp"
+#include "source/StringSource.hpp"
 
 namespace {
 template <typename T>
 T getValueData(const Value& value) {
    return std::get<T>(value.data());
+}
+
+ProgramPtr parseProgramForRuntimeTest(const std::string& code, ErrorHandler& errorHandler) {
+   StringSource source("runtime_value_test.djm", code);
+   Lexer lexer(source);
+   Parser parser(lexer, &errorHandler);
+   return parser.parseProgram();
 }
 }
 
@@ -81,15 +95,37 @@ TEST(RuntimeValueTests, CastsStringValuesToNumericTypes) {
    EXPECT_EQ(getValueData<uint64_t>(castValue(Value::stringValue("4294967295"), RuntimeType::uintType())), 4294967295ULL);
    EXPECT_DOUBLE_EQ(getValueData<double>(castValue(Value::stringValue("-123.456"), RuntimeType::floatType())), -123.456);
    EXPECT_DOUBLE_EQ(getValueData<double>(castValue(Value::stringValue("1000.25"), RuntimeType::floatType())), 1000.25);
+
+   EXPECT_EQ(stringToInt("-1234"), -1234);
+   EXPECT_EQ(stringToUint("4294967295"), 4294967295ULL);
+   EXPECT_DOUBLE_EQ(stringToFloat("-123.456"), -123.456);
 }
 
 TEST(RuntimeValueTests, RejectsInvalidStringNumericCasts) {
-   EXPECT_THROW(castValue(Value::stringValue("12abc"), RuntimeType::intType()), std::exception);
-   EXPECT_THROW(castValue(Value::stringValue("1_2"), RuntimeType::intType()), std::exception);
-   EXPECT_THROW(castValue(Value::stringValue("1_000.25"), RuntimeType::floatType()), std::exception);
-   EXPECT_THROW(castValue(Value::stringValue(""), RuntimeType::intType()), std::exception);
-   EXPECT_THROW(castValue(Value::stringValue("9223372036854775808"), RuntimeType::intType()), std::exception);
-   EXPECT_THROW(castValue(Value::stringValue("12.3.4"), RuntimeType::floatType()), std::exception);
+   EXPECT_THROW(castValue(Value::stringValue("12abc"), RuntimeType::intType()), RuntimeValueInvalidStringCast);
+   EXPECT_THROW(castValue(Value::stringValue("1_2"), RuntimeType::intType()), RuntimeValueInvalidStringCast);
+   EXPECT_THROW(castValue(Value::stringValue("1_000.25"), RuntimeType::floatType()), RuntimeValueInvalidStringCast);
+   EXPECT_THROW(castValue(Value::stringValue(""), RuntimeType::intType()), RuntimeValueInvalidStringCast);
+   EXPECT_THROW(castValue(Value::stringValue("-1"), RuntimeType::uintType()), RuntimeValueInvalidStringCast);
+   EXPECT_THROW(castValue(Value::stringValue("12.3.4"), RuntimeType::floatType()), RuntimeValueInvalidStringCast);
+}
+
+TEST(RuntimeValueTests, ThrowsOutOfRangeWithWrappedValue) {
+   try {
+      castValue(Value::intValue(1000), RuntimeType::charType());
+      FAIL() << "expected RuntimeValueOutOfRange";
+   } catch (const RuntimeValueOutOfRange& error) {
+      EXPECT_EQ(error.wrappedValue().type(), RuntimeType::charType());
+      EXPECT_EQ(static_cast<unsigned char>(getValueData<char>(error.wrappedValue())), 232);
+   }
+
+   try {
+      castValue(Value::stringValue("9223372036854775808"), RuntimeType::intType());
+      FAIL() << "expected RuntimeValueOutOfRange";
+   } catch (const RuntimeValueOutOfRange& error) {
+      EXPECT_EQ(error.wrappedValue().type(), RuntimeType::intType());
+      EXPECT_EQ(getValueData<int64_t>(error.wrappedValue()), std::numeric_limits<int64_t>::min());
+   }
 }
 
 TEST(RuntimeValueTests, CastsListsElementByElement) {
@@ -137,4 +173,43 @@ TEST(RuntimeValueTests, ComparesOrderedValues) {
 
    EXPECT_LT(compareValues(Value::stringValue("abc"), Value::stringValue("abd")), 0);
    EXPECT_THROW(compareValues(Value::intValue(1), Value::uintValue(1)), std::runtime_error);
+}
+
+TEST(RuntimeValueInterpreterTests, InvalidStringCastReportsRuntimeErrorAndStops) {
+   const std::string code =
+      "fun main() -> int {\n"
+      "   string s = \"123abc\"\n"
+      "   int i = s as int\n"
+      "   return 37\n"
+      "}\n";
+   ErrorHandler errorHandler(code);
+   auto program = parseProgramForRuntimeTest(code, errorHandler);
+   ASSERT_NE(program, nullptr);
+   ASSERT_FALSE(errorHandler.hasErrors());
+
+   std::ostringstream output;
+   Interpreter interpreter(&errorHandler, &output);
+
+   EXPECT_EQ(interpreter.interpret(*program), 1);
+   ASSERT_TRUE(errorHandler.hasErrors());
+   EXPECT_NE(errorHandler.errors().back().message.find("cannot cast string '123abc' to int"), std::string::npos);
+}
+
+TEST(RuntimeValueInterpreterTests, OutOfRangeCastReportsRuntimeErrorAndContinues) {
+   const std::string code =
+      "fun main() -> int {\n"
+      "   int i = 1000 as char as int\n"
+      "   return 37\n"
+      "}\n";
+   ErrorHandler errorHandler(code);
+   auto program = parseProgramForRuntimeTest(code, errorHandler);
+   ASSERT_NE(program, nullptr);
+   ASSERT_FALSE(errorHandler.hasErrors());
+
+   std::ostringstream output;
+   Interpreter interpreter(&errorHandler, &output);
+
+   EXPECT_EQ(interpreter.interpret(*program), 37);
+   ASSERT_TRUE(errorHandler.hasErrors());
+   EXPECT_NE(errorHandler.errors().back().message.find("outside char range"), std::string::npos);
 }

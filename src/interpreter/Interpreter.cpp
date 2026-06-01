@@ -501,7 +501,14 @@ void Interpreter::visit(const FlattenExpression& node) {
 }
 
 void Interpreter::visit(const CastExpression& node) {
-   lastValue_ = castValue(evaluate(node.expression()), runtimeTypeFromNode(node.targetType()));
+   try {
+      lastValue_ = castValue(evaluate(node.expression()), runtimeTypeFromNode(node.targetType()));
+   } catch (const RuntimeValueOutOfRange& error) {
+      reportRuntimeError(RuntimeError(error.what(), node.location()));
+      lastValue_ = cloneValue(error.wrappedValue());
+   } catch (const RuntimeValueInvalidStringCast& error) {
+      throw RuntimeError(error.what(), node.location());
+   }
 }
 
 void Interpreter::visit(const MemberAccessExpression& node) {
@@ -707,6 +714,11 @@ Value Interpreter::coerceForAssignment(Value value, const RuntimeType& targetTyp
    if (isNumeric(value.type()) && isNumeric(targetType)) {
       try {
          return castValue(value, targetType);
+      } catch (const RuntimeValueOutOfRange& error) {
+         reportRuntimeError(RuntimeError(error.what(), location));
+         return cloneValue(error.wrappedValue());
+      } catch (const RuntimeValueInvalidStringCast& error) {
+         throw RuntimeError(error.what(), location);
       } catch (const std::runtime_error&) {
       }
    }

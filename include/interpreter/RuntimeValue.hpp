@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <variant>
 #include <vector>
@@ -99,6 +100,25 @@ private:
 };
 
 using ValueRef = std::shared_ptr<ValueObject>;
+
+class RuntimeValueInvalidStringCast final : public std::runtime_error {
+public:
+   explicit RuntimeValueInvalidStringCast(const std::string& message);
+};
+
+class RuntimeValueOutOfRange final : public std::runtime_error {
+public:
+   RuntimeValueOutOfRange(const std::string& message, Value wrappedValue);
+
+   const Value& wrappedValue() const;
+
+private:
+   Value wrappedValue_;
+};
+
+int64_t stringToInt(const std::string& text);
+uint64_t stringToUint(const std::string& text);
+double stringToFloat(const std::string& text);
 
 Value defaultValueFor(const RuntimeType& type);
 Value cloneValue(const Value& value);
