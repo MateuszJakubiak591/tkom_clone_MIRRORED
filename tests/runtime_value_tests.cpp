@@ -77,16 +77,16 @@ TEST(RuntimeValueTests, CastsPrimitiveValuesToString) {
 }
 
 TEST(RuntimeValueTests, CastsStringValuesToNumericTypes) {
-   EXPECT_EQ(getValueData<int64_t>(castValue(Value::stringValue("-1_234"), RuntimeType::intType())), -1234);
-   EXPECT_EQ(getValueData<uint64_t>(castValue(Value::stringValue("4_294_967_295"), RuntimeType::uintType())), 4294967295ULL);
+   EXPECT_EQ(getValueData<int64_t>(castValue(Value::stringValue("-1234"), RuntimeType::intType())), -1234);
+   EXPECT_EQ(getValueData<uint64_t>(castValue(Value::stringValue("4294967295"), RuntimeType::uintType())), 4294967295ULL);
    EXPECT_DOUBLE_EQ(getValueData<double>(castValue(Value::stringValue("-123.456"), RuntimeType::floatType())), -123.456);
-   EXPECT_DOUBLE_EQ(getValueData<double>(castValue(Value::stringValue("1_000.25"), RuntimeType::floatType())), 1000.25);
+   EXPECT_DOUBLE_EQ(getValueData<double>(castValue(Value::stringValue("1000.25"), RuntimeType::floatType())), 1000.25);
 }
 
 TEST(RuntimeValueTests, RejectsInvalidStringNumericCasts) {
    EXPECT_THROW(castValue(Value::stringValue("12abc"), RuntimeType::intType()), std::exception);
-   EXPECT_THROW(castValue(Value::stringValue("1__2"), RuntimeType::intType()), std::exception);
-   EXPECT_THROW(castValue(Value::stringValue("1_.2"), RuntimeType::floatType()), std::exception);
+   EXPECT_THROW(castValue(Value::stringValue("1_2"), RuntimeType::intType()), std::exception);
+   EXPECT_THROW(castValue(Value::stringValue("1_000.25"), RuntimeType::floatType()), std::exception);
    EXPECT_THROW(castValue(Value::stringValue(""), RuntimeType::intType()), std::exception);
    EXPECT_THROW(castValue(Value::stringValue("9223372036854775808"), RuntimeType::intType()), std::exception);
    EXPECT_THROW(castValue(Value::stringValue("12.3.4"), RuntimeType::floatType()), std::exception);

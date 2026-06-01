@@ -8,64 +8,26 @@
 #include <utility>
 
 namespace {
-std::string removeUnderscores(const std::string& text) {
-   std::string result;
-   result.reserve(text.size());
-
-   for (char c : text) {
-      if (c != '_') {
-         result.push_back(c);
-      }
-   }
-
-   return result;
-}
-
-bool hasValidUnderscorePlacement(const std::string& text) {
-   if (text.empty() || text.front() == '_' || text.back() == '_') {
-      return false;
-   }
-
-   for (std::size_t i = 1; i + 1 < text.size(); ++i) {
-      if (text[i] == '_') {
-         if (text[i - 1] < '0' || text[i - 1] > '9') {
-            return false;
-         }
-         if (text[i + 1] < '0' || text[i + 1] > '9') {
-            return false;
-         }
-      }
-   }
-
-   return true;
-}
-
 int64_t parseIntLiteral(const std::string& text) {
-   if (!hasValidUnderscorePlacement(text)) {
-      throw std::invalid_argument("invalid underscore placement in integer literal");
-   }
-
-   std::string normalized = removeUnderscores(text);
-
    int64_t result = 0;
    bool negative = false;
    std::size_t start = 0;
 
-   if (!normalized.empty() && normalized[0] == '-') {
+   if (!text.empty() && text[0] == '-') {
       negative = true;
       start = 1;
    }
 
-   if (start == normalized.size()) {
+   if (start == text.size()) {
       throw std::invalid_argument("missing integer digits");
    }
 
-   for (std::size_t i = start; i < normalized.size(); ++i) {
-      if (normalized[i] < '0' || normalized[i] > '9') {
+   for (std::size_t i = start; i < text.size(); ++i) {
+      if (text[i] < '0' || text[i] > '9') {
          throw std::invalid_argument("invalid character in integer literal");
       }
 
-      int digit = normalized[i] - '0';
+      int digit = text[i] - '0';
 
       if (result > (std::numeric_limits<int64_t>::max() - digit) / 10) {
          throw std::out_of_range("integer literal outside int64 range");
@@ -78,46 +40,40 @@ int64_t parseIntLiteral(const std::string& text) {
 }
 
 double parseFloatLiteral(const std::string& text) {
-   if (!hasValidUnderscorePlacement(text)) {
-      throw std::invalid_argument("invalid underscore placement in float literal");
-   }
-
-   std::string normalized = removeUnderscores(text);
-
    double result = 0.0;
    std::size_t i = 0;
    bool negative = false;
 
-   if (!normalized.empty() && normalized[0] == '-') {
+   if (!text.empty() && text[0] == '-') {
       negative = true;
       i = 1;
    }
 
-   if (i == normalized.size()) {
+   if (i == text.size()) {
       throw std::invalid_argument("missing float digits");
    }
 
    bool hasDigits = false;
-   while (i < normalized.size() && normalized[i] != '.') {
-      if (normalized[i] < '0' || normalized[i] > '9') {
+   while (i < text.size() && text[i] != '.') {
+      if (text[i] < '0' || text[i] > '9') {
          throw std::invalid_argument("invalid character in float literal");
       }
 
       hasDigits = true;
-      result = result * 10.0 + (normalized[i] - '0');
+      result = result * 10.0 + (text[i] - '0');
       ++i;
    }
 
-   if (i < normalized.size() && normalized[i] == '.') {
+   if (i < text.size() && text[i] == '.') {
       ++i;
       double weight = 0.1;
-      while (i < normalized.size()) {
-         if (normalized[i] < '0' || normalized[i] > '9') {
+      while (i < text.size()) {
+         if (text[i] < '0' || text[i] > '9') {
             throw std::invalid_argument("invalid character in float literal");
          }
 
          hasDigits = true;
-         result += (normalized[i] - '0') * weight;
+         result += (text[i] - '0') * weight;
          weight /= 10.0;
          ++i;
       }
