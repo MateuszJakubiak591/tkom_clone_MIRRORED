@@ -99,6 +99,7 @@ TEST(RuntimeValueTests, CastsStringValuesToNumericTypes) {
    EXPECT_EQ(stringToInt("-1234"), -1234);
    EXPECT_EQ(stringToUint("4294967295"), 4294967295ULL);
    EXPECT_DOUBLE_EQ(stringToFloat("-123.456"), -123.456);
+   EXPECT_EQ(stringToInt("-9223372036854775808"), std::numeric_limits<int64_t>::min());
 }
 
 TEST(RuntimeValueTests, RejectsInvalidStringNumericCasts) {
@@ -125,6 +126,14 @@ TEST(RuntimeValueTests, ThrowsOutOfRangeWithWrappedValue) {
    } catch (const RuntimeValueOutOfRange& error) {
       EXPECT_EQ(error.wrappedValue().type(), RuntimeType::intType());
       EXPECT_EQ(getValueData<int64_t>(error.wrappedValue()), std::numeric_limits<int64_t>::min());
+   }
+
+   try {
+      castValue(Value::stringValue("18446744073709551616"), RuntimeType::uintType());
+      FAIL() << "expected RuntimeValueOutOfRange";
+   } catch (const RuntimeValueOutOfRange& error) {
+      EXPECT_EQ(error.wrappedValue().type(), RuntimeType::uintType());
+      EXPECT_EQ(getValueData<uint64_t>(error.wrappedValue()), 0);
    }
 }
 

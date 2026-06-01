@@ -8,43 +8,74 @@
 #include <utility>
 
 namespace {
-bool hasOnlyDigits(const std::string& text, std::size_t start) {
+struct IntegerParseResult {
+   uint64_t checked = 0;
+   uint64_t wrapped = 0;
+   bool outOfRange = false;
+};
+
+IntegerParseResult parseUnsignedDigits(const std::string& text, std::size_t start, uint64_t limit) {
+   IntegerParseResult result;
+
    if (start == text.size()) {
-      return false;
+      throw RuntimeValueInvalidStringCast("missing digits");
    }
 
    for (std::size_t i = start; i < text.size(); ++i) {
       if (text[i] < '0' || text[i] > '9') {
-         return false;
+         throw RuntimeValueInvalidStringCast("invalid digit");
       }
-   }
 
-   return true;
-}
+      const uint64_t digit = static_cast<uint64_t>(text[i] - '0');
+      result.wrapped = result.wrapped * 10 + digit;
 
-uint64_t wrappingIntMagnitude(const std::string& text, std::size_t start) {
-   uint64_t result = 0;
-
-   for (std::size_t i = start; i < text.size(); ++i) {
-      int digit = text[i] - '0';
-      result = result * 10 + static_cast<uint64_t>(digit);
+      if (!result.outOfRange) {
+         if (result.checked > (limit - digit) / 10) {
+            result.outOfRange = true;
+         } else {
+            result.checked = result.checked * 10 + digit;
+         }
+      }
    }
 
    return result;
 }
 
-uint64_t wrappingSignedIntegerString(const std::string& text) {
-   if (!text.empty() && text[0] == '-') {
-      return 0 - wrappingIntMagnitude(text, 1);
+int64_t int64FromWrappedBits(uint64_t bits) {
+   constexpr uint64_t signBit = uint64_t{1} << 63;
+
+   if ((bits & signBit) == 0) {
+      return static_cast<int64_t>(bits);
    }
 
-   return wrappingIntMagnitude(text, 0);
+   const uint64_t magnitude = 0 - bits;
+   if (magnitude == signBit) {
+      return std::numeric_limits<int64_t>::min();
+   }
+
+   return -static_cast<int64_t>(magnitude);
+}
+
+char charFromWrappedBits(uint64_t bits) {
+   return static_cast<char>(static_cast<unsigned char>(bits));
+}
+
+uint64_t wrappingIntegralPart(double value) {
+   long double wrapped = std::fmod(
+      std::trunc(static_cast<long double>(value)),
+      std::ldexp(1.0L, 64)
+   );
+
+   if (wrapped < 0.0L) {
+      wrapped += std::ldexp(1.0L, 64);
+   }
+
+   return static_cast<uint64_t>(wrapped);
 }
 
 }
 
 int64_t stringToInt(const std::string& text) {
-   int64_t result = 0;
    bool negative = false;
    std::size_t start = 0;
 
@@ -53,47 +84,48 @@ int64_t stringToInt(const std::string& text) {
       start = 1;
    }
 
-   if (!hasOnlyDigits(text, start)) {
+   const uint64_t maxMagnitude = static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) + 1;
+   IntegerParseResult parsed;
+   try {
+      parsed = parseUnsignedDigits(text, start, negative ? maxMagnitude : maxMagnitude - 1);
+   } catch (const RuntimeValueInvalidStringCast&) {
       throw RuntimeValueInvalidStringCast("cannot cast string '" + text + "' to int");
    }
 
-   for (std::size_t i = start; i < text.size(); ++i) {
-      int digit = text[i] - '0';
-
-      if (result > (std::numeric_limits<int64_t>::max() - digit) / 10) {
-         throw RuntimeValueOutOfRange(
-            "string '" + text + "' is outside int range",
-            Value::intValue(static_cast<int64_t>(wrappingSignedIntegerString(text)))
-         );
-      }
-
-      result = result * 10 + digit;
+   const uint64_t wrappedBits = negative ? 0 - parsed.wrapped : parsed.wrapped;
+   if (parsed.outOfRange) {
+      throw RuntimeValueOutOfRange(
+         "string '" + text + "' is outside int range",
+         Value::intValue(int64FromWrappedBits(wrappedBits))
+      );
    }
 
-   return negative ? -result : result;
+   if (negative) {
+      if (parsed.checked == maxMagnitude) {
+         return std::numeric_limits<int64_t>::min();
+      }
+      return -static_cast<int64_t>(parsed.checked);
+   }
+
+   return static_cast<int64_t>(parsed.checked);
 }
 
 uint64_t stringToUint(const std::string& text) {
-   if (!hasOnlyDigits(text, 0)) {
+   IntegerParseResult parsed;
+   try {
+      parsed = parseUnsignedDigits(text, 0, std::numeric_limits<uint64_t>::max());
+   } catch (const RuntimeValueInvalidStringCast&) {
       throw RuntimeValueInvalidStringCast("cannot cast string '" + text + "' to uint");
    }
 
-   uint64_t result = 0;
-
-   for (char c : text) {
-      int digit = c - '0';
-
-      if (result > (std::numeric_limits<uint64_t>::max() - digit) / 10) {
-         throw RuntimeValueOutOfRange(
-            "string '" + text + "' is outside uint range",
-            Value::uintValue(wrappingIntMagnitude(text, 0))
-         );
-      }
-
-      result = result * 10 + static_cast<uint64_t>(digit);
+   if (parsed.outOfRange) {
+      throw RuntimeValueOutOfRange(
+         "string '" + text + "' is outside uint range",
+         Value::uintValue(parsed.wrapped)
+      );
    }
 
-   return result;
+   return parsed.checked;
 }
 
 double stringToFloat(const std::string& text) {
@@ -408,7 +440,7 @@ Value castValue(const Value& value, const RuntimeType& targetType) {
          if (targetType.kind() == RuntimeType::Kind::Float) return Value::floatValue(static_cast<double>(v));
          if (targetType.kind() == RuntimeType::Kind::Bool) return Value::boolValue(v > 0);
          if (targetType.kind() == RuntimeType::Kind::Char) {
-            Value result = Value::charValue(static_cast<char>(v));
+            Value result = Value::charValue(charFromWrappedBits(static_cast<uint64_t>(v)));
             if (v < 0 || v > std::numeric_limits<unsigned char>::max()) {
                throw RuntimeValueOutOfRange("int value is outside char range", std::move(result));
             }
@@ -419,7 +451,7 @@ Value castValue(const Value& value, const RuntimeType& targetType) {
       case RuntimeType::Kind::Uint: {
          auto v = std::get<uint64_t>(value.data());
          if (targetType.kind() == RuntimeType::Kind::Int) {
-            Value result = Value::intValue(static_cast<int64_t>(v));
+            Value result = Value::intValue(int64FromWrappedBits(v));
             if (v > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
                throw RuntimeValueOutOfRange("uint value is outside int range", std::move(result));
             }
@@ -428,7 +460,7 @@ Value castValue(const Value& value, const RuntimeType& targetType) {
          if (targetType.kind() == RuntimeType::Kind::Float) return Value::floatValue(static_cast<double>(v));
          if (targetType.kind() == RuntimeType::Kind::Bool) return Value::boolValue(v != 0);
          if (targetType.kind() == RuntimeType::Kind::Char) {
-            Value result = Value::charValue(static_cast<char>(v));
+            Value result = Value::charValue(charFromWrappedBits(v));
             if (v > std::numeric_limits<unsigned char>::max()) {
                throw RuntimeValueOutOfRange("uint value is outside char range", std::move(result));
             }
@@ -439,26 +471,29 @@ Value castValue(const Value& value, const RuntimeType& targetType) {
       case RuntimeType::Kind::Float: {
          auto v = std::get<double>(value.data());
          if (targetType.kind() == RuntimeType::Kind::Int) {
-            Value result = Value::intValue(static_cast<int64_t>(v));
             if (v < static_cast<double>(std::numeric_limits<int64_t>::min()) ||
                 v > static_cast<double>(std::numeric_limits<int64_t>::max())) {
+               Value result = Value::intValue(int64FromWrappedBits(wrappingIntegralPart(v)));
                throw RuntimeValueOutOfRange("float value is outside int range", std::move(result));
             }
+            Value result = Value::intValue(static_cast<int64_t>(v));
             return result;
          }
          if (targetType.kind() == RuntimeType::Kind::Uint) {
-            Value result = Value::uintValue(static_cast<uint64_t>(v));
             if (v < 0.0 || v > static_cast<double>(std::numeric_limits<uint64_t>::max())) {
+               Value result = Value::uintValue(wrappingIntegralPart(v));
                throw RuntimeValueOutOfRange("float value is outside uint range", std::move(result));
             }
+            Value result = Value::uintValue(static_cast<uint64_t>(v));
             return result;
          }
          if (targetType.kind() == RuntimeType::Kind::Bool) return Value::boolValue(v > 0.0);
          if (targetType.kind() == RuntimeType::Kind::Char) {
-            Value result = Value::charValue(static_cast<char>(v));
             if (v < 0.0 || v > static_cast<double>(std::numeric_limits<unsigned char>::max())) {
+               Value result = Value::charValue(charFromWrappedBits(wrappingIntegralPart(v)));
                throw RuntimeValueOutOfRange("float value is outside char range", std::move(result));
             }
+            Value result = Value::charValue(static_cast<char>(v));
             return result;
          }
          break;
