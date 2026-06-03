@@ -38,23 +38,29 @@ TEST(InterpreterProgramTests, PassesProgramArgumentsAsStringList) {
 TEST(InterpreterProgramTests, RejectsMainWithUnsupportedArity) {
    auto result = interpretSource(
       "fun main(a: int, b: int) -> int {\n"
-      "   return a + b\n"
+      "   return 12\n"
       "}\n"
    );
 
-   EXPECT_EQ(result.exitCode, 1);
+   EXPECT_EQ(result.exitCode, 12);
    ASSERT_FALSE(result.errors.empty());
-   EXPECT_EQ(result.errors.back().message, "main must take zero arguments or list<string>");
+   EXPECT_EQ(
+      result.errors.back().message,
+      "main must take zero arguments or list<string>; continuing as if main had no parameters"
+   );
 }
 
 TEST(InterpreterProgramTests, RejectsMainWithUnsupportedSingleParameterType) {
    auto result = interpretSource(
       "fun main(x: int) -> int {\n"
-      "   return x\n"
+      "   return 7\n"
       "}\n"
    );
 
-   EXPECT_EQ(result.exitCode, 1);
+   EXPECT_EQ(result.exitCode, 7);
    ASSERT_FALSE(result.errors.empty());
-   EXPECT_EQ(result.errors.back().message, "main must take zero arguments or list<string>");
+   EXPECT_EQ(
+      result.errors.back().message,
+      "main must take zero arguments or list<string>; continuing as if main had no parameters"
+   );
 }

@@ -71,3 +71,44 @@ TEST(InterpreterControlFlowTests, IteratesForLoopOverList) {
    EXPECT_EQ(result.exitCode, 9);
    EXPECT_TRUE(result.errors.empty());
 }
+
+TEST(InterpreterControlFlowTests, ContinuesForLoopWithEmptyListWhenIterableIsNotList) {
+   auto result = interpretSource(
+      "fun notList() -> int {\n"
+      "   return 12\n"
+      "}\n"
+      "fun main() -> int {\n"
+      "   mut int total = 0\n"
+      "   for int value in notList() {\n"
+      "      total = total + 1\n"
+      "   }\n"
+      "   return total\n"
+      "}\n"
+   );
+
+   EXPECT_EQ(result.exitCode, 0);
+   ASSERT_FALSE(result.errors.empty());
+   EXPECT_EQ(
+      result.errors.back().message,
+      "for iterable must be list<int>; continuing with an empty list"
+   );
+}
+
+TEST(InterpreterControlFlowTests, CorrectsForLoopVariableTypeToIterableElementType) {
+   auto result = interpretSource(
+      "fun main() -> int {\n"
+      "   mut int sum = 0\n"
+      "   for string value in [2, 3] {\n"
+      "      sum = sum + value\n"
+      "   }\n"
+      "   return sum\n"
+      "}\n"
+   );
+
+   EXPECT_EQ(result.exitCode, 5);
+   ASSERT_FALSE(result.errors.empty());
+   EXPECT_EQ(
+      result.errors.back().message,
+      "for loop variable type string does not match iterable element type int; continuing with corrected loop type"
+   );
+}

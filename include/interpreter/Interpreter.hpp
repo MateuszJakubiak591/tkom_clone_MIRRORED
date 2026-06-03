@@ -95,6 +95,7 @@ private:
    };
 
    Environment environment_;
+   NullErrorHandler nullErrorHandler_;
    ErrorHandler* errorHandler_;
    std::ostream* output_;
    std::optional<Value> lastValue_;
@@ -133,6 +134,7 @@ private:
       const std::vector<Value>& args,
       const SourceLocation& location
    );
+   Value executeMainWithoutParameters(const FunctionDeclaration& declaration);
    Value evaluateBinaryNumeric(const BinaryExpression& node, char operation);
    Value evaluateComparison(const BinaryExpression& node, const std::string& operation);
    Value coerceForParameter(
@@ -142,7 +144,7 @@ private:
       const SourceLocation& location
    );
    Value coerceForAssignment(Value value, const RuntimeType& targetType, const SourceLocation& location);
-   void validateMainSignature(const FunctionDeclaration& declaration);
+   bool mainSignatureIsValid(const FunctionDeclaration& declaration) const;
    bool asBool(const Value& value, const SourceLocation& location) const;
    void executeBlock(const BlockStatement& block, bool createScope);
    void reportRuntimeError(const RuntimeError& error);

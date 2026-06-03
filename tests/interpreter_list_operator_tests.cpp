@@ -149,6 +149,22 @@ TEST(InterpreterListOperatorTests, CountsLists) {
    EXPECT_TRUE(result.errors.empty());
 }
 
+TEST(InterpreterListOperatorTests, SkipsMixedTypeListLiteralElements) {
+   auto result = interpretSource(
+      "fun main() -> int {\n"
+      "   list<int> values = [1, \"bad\", 2]\n"
+      "   return values[1]\n"
+      "}\n"
+   );
+
+   EXPECT_EQ(result.exitCode, 2);
+   ASSERT_FALSE(result.errors.empty());
+   EXPECT_EQ(
+      result.errors.back().message,
+      "mixed type list literal is not supported; element skipped"
+   );
+}
+
 TEST(InterpreterListOperatorTests, ReversesLists) {
    auto result = interpretSource(
       "fun main() -> int {\n"

@@ -24,6 +24,7 @@ public:
    const std::vector<Error>& errors() const;
 
    void printErrors(std::ostream& out) const;
+   virtual void printLastWarning(std::ostream& out) const;
 
 private:
    std::vector<Error> errors_;
@@ -37,4 +38,5 @@ private:
 class NullErrorHandler : public ErrorHandler {
 public:
    void report(ErrorType, const std::string&, const SourceLocation&) override {}
+   void printLastWarning(std::ostream&) const override {}
 };

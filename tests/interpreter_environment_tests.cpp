@@ -36,9 +36,9 @@ TEST(InterpreterEnvironmentTests, RejectsAssignmentToImmutableVariable) {
       "}\n"
    );
 
-   EXPECT_EQ(result.exitCode, 1);
+   EXPECT_EQ(result.exitCode, 10);
    ASSERT_FALSE(result.errors.empty());
-   EXPECT_EQ(result.errors.back().message, "cannot assign to immutable variable");
+   EXPECT_EQ(result.errors.back().message, "cannot assign to immutable variable; assignment skipped");
 }
 
 TEST(InterpreterEnvironmentTests, KeepsBlockScopeLocal) {

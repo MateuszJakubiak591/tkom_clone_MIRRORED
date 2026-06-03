@@ -71,7 +71,7 @@ void requireSameListOperands(
 }
 
 Interpreter::Interpreter(ErrorHandler* errorHandler, std::ostream* output, std::string mainFilePath)
-   : errorHandler_(errorHandler),
+   : errorHandler_(errorHandler == nullptr ? &nullErrorHandler_ : errorHandler),
      output_(output == nullptr ? &std::cout : output) {
    if (mainFilePath.empty()) {
       importRoot_ = std::filesystem::current_path();
@@ -149,18 +149,27 @@ void Interpreter::visit(const Program& node) {
 
    std::vector<Value> args;
 
-   if (main.arity() == 1) {
-      if (mainDeclaration != nullptr) {
-         validateMainSignature(*mainDeclaration);
-      }
+   bool shouldExecuteMainWithoutParameters = false;
 
+   if (main.arity() == 1 && mainDeclaration != nullptr && mainSignatureIsValid(*mainDeclaration)) {
       ValueList values;
       for (const auto& arg : programArgs_) {
          values.push_back(Value::stringValue(arg));
       }
       args.push_back(Value::listValue(RuntimeType::stringType(), std::move(values)));
    } else if (main.arity() != 0) {
-      throw RuntimeError("main must take zero arguments or list<string>", node.location());
+      reportRuntimeError(RuntimeError(
+         "main must take zero arguments or list<string>; continuing as if main had no parameters",
+         node.location()
+      ));
+      shouldExecuteMainWithoutParameters = true;
+   }
+
+   if (shouldExecuteMainWithoutParameters && mainDeclaration != nullptr) {
+      lastValue_ = executeMainWithoutParameters(*mainDeclaration);
+      return;
+   } else if (shouldExecuteMainWithoutParameters) {
+      throw RuntimeError("function not found: main", node.location());
    }
 
    lastValue_ = main.call(*this, args, node.location());
@@ -273,8 +282,20 @@ void Interpreter::visit(const ForStatement& node) {
    Value iterable = evaluate(node.iterable());
    RuntimeType loopType = runtimeTypeFromNode(node.variableType());
 
-   if (iterable.type().kind() != RuntimeType::Kind::List || iterable.type().elementType() != loopType) {
-      throw RuntimeError("for iterable must be " + RuntimeType::listOf(loopType).toString(), node.iterable().location());
+   if (iterable.type().kind() != RuntimeType::Kind::List) {
+      reportRuntimeError(RuntimeError(
+         "for iterable must be " + RuntimeType::listOf(loopType).toString() + "; continuing with an empty list",
+         node.iterable().location()
+      ));
+      iterable = Value::listValue(loopType, {});
+   } else if (iterable.type().elementType() != loopType) {
+      reportRuntimeError(RuntimeError(
+         "for loop variable type " + loopType.toString() +
+         " does not match iterable element type " + iterable.type().elementType().toString() +
+         "; continuing with corrected loop type",
+         node.variableLocation()
+      ));
+      loopType = iterable.type().elementType();
    }
 
    environment_.pushScope();
@@ -309,7 +330,11 @@ void Interpreter::visit(const ForStatement& node) {
 void Interpreter::visit(const AssignmentStatement& node) {
    ValueRef target = resolveAssignable(node.target());
    if (!target->isMutable()) {
-      throw RuntimeError("cannot assign to immutable variable", node.target().location());
+      reportRuntimeError(RuntimeError(
+         "cannot assign to immutable variable; assignment skipped",
+         node.target().location()
+      ));
+      return;
    }
 
    target->assign(coerceForAssignment(evaluate(node.value()), target->type(), node.value().location()));
@@ -330,7 +355,11 @@ void Interpreter::visit(const ListLiteralExpression& node) {
       if (!elementType) {
          elementType = value.type();
       } else if (value.type() != *elementType) {
-         throw RuntimeError("mixed type list literal is not supported", element->location());
+         reportRuntimeError(RuntimeError(
+            "mixed type list literal is not supported; element skipped",
+            element->location()
+         ));
+         continue;
       }
       values.push_back(std::move(value));
    }
@@ -1007,6 +1036,26 @@ Value Interpreter::callImportedFunction(
    }
 }
 
+Value Interpreter::executeMainWithoutParameters(const FunctionDeclaration& declaration) {
+   environment_.pushCallContext();
+
+   try {
+      declaration.body().accept(*this);
+
+      RuntimeType returnType = runtimeTypeFromNode(declaration.returnType());
+      environment_.popCallContext();
+      return defaultValueFor(returnType);
+   } catch (const ReturnSignal& signal) {
+      RuntimeType returnType = runtimeTypeFromNode(declaration.returnType());
+      Value value = coerceForAssignment(signal.value, returnType, declaration.location());
+      environment_.popCallContext();
+      return value;
+   } catch (...) {
+      environment_.popCallContext();
+      throw;
+   }
+}
+
 Value Interpreter::evaluateBinaryNumeric(const BinaryExpression& node, char operation) {
    Value left = evaluate(node.left());
    Value right = evaluate(node.right());
@@ -1121,16 +1170,14 @@ Value Interpreter::coerceForAssignment(Value value, const RuntimeType& targetTyp
    throw RuntimeError("cannot assign " + value.type().toString() + " to " + targetType.toString(), location);
 }
 
-void Interpreter::validateMainSignature(const FunctionDeclaration& declaration) {
+bool Interpreter::mainSignatureIsValid(const FunctionDeclaration& declaration) const {
    const auto& parameters = declaration.parameters();
    if (parameters.size() != 1) {
-      return;
+      return parameters.empty();
    }
 
    RuntimeType parameterType = runtimeTypeFromNode(*parameters[0].type);
-   if (parameterType != RuntimeType::listOf(RuntimeType::stringType())) {
-      throw RuntimeError("main must take zero arguments or list<string>", parameters[0].location);
-   }
+   return parameterType == RuntimeType::listOf(RuntimeType::stringType());
 }
 
 bool Interpreter::asBool(const Value& value, const SourceLocation& location) const {
@@ -1142,9 +1189,6 @@ bool Interpreter::asBool(const Value& value, const SourceLocation& location) con
 }
 
 void Interpreter::reportRuntimeError(const RuntimeError& error) {
-   if (errorHandler_ != nullptr) {
-      errorHandler_->report(ErrorType::Runtime, error.what(), error.location());
-   } else {
-      *output_ << "Runtime error: " << error.what() << '\n';
-   }
+   errorHandler_->report(ErrorType::Runtime, error.what(), error.location());
+   errorHandler_->printLastWarning(*output_);
 }

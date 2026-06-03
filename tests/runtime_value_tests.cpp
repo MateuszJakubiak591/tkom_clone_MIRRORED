@@ -222,3 +222,22 @@ TEST(RuntimeValueInterpreterTests, OutOfRangeCastReportsRuntimeErrorAndContinues
    ASSERT_TRUE(errorHandler.hasErrors());
    EXPECT_NE(errorHandler.errors().back().message.find("outside char range"), std::string::npos);
 }
+
+TEST(RuntimeValueInterpreterTests, NullErrorHandlerIsAcceptedByInterpreter) {
+   const std::string code =
+      "fun main() -> int {\n"
+      "   string s = \"123abc\"\n"
+      "   int i = s as int\n"
+      "   return 37\n"
+      "}\n";
+   ErrorHandler parseErrorHandler(code);
+   auto program = parseProgramForRuntimeTest(code, parseErrorHandler);
+   ASSERT_NE(program, nullptr);
+   ASSERT_FALSE(parseErrorHandler.hasErrors());
+
+   std::ostringstream output;
+   Interpreter interpreter(nullptr, &output);
+
+   EXPECT_EQ(interpreter.interpret(*program), 1);
+   EXPECT_TRUE(output.str().empty());
+}

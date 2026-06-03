@@ -37,6 +37,17 @@ void ErrorHandler::printErrors(std::ostream& out) const {
    }
 }
 
+void ErrorHandler::printLastWarning(std::ostream& out) const {
+   if (errors_.empty()) {
+      return;
+   }
+
+   const Error& error = errors_.back();
+   out << error.toString() << "\n";
+   printSourceSnippet(out, error.location);
+   out << "\n";
+}
+
 std::string ErrorHandler::getLine(int lineNumber) const {
    if (lineNumber <= 0) {
       return "";
