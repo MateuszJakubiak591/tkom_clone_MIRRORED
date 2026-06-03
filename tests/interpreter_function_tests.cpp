@@ -16,7 +16,7 @@ TEST(InterpreterFunctionTests, CallsUserFunctionWithArguments) {
    EXPECT_TRUE(result.errors.empty());
 }
 
-TEST(InterpreterFunctionTests, CoercesReturnValue) {
+TEST(InterpreterFunctionTests, ReportsReturnValueMismatchAndConverts) {
    auto result = interpretSource(
       "fun toInt(value: float) -> int {\n"
       "   return value\n"
@@ -27,10 +27,25 @@ TEST(InterpreterFunctionTests, CoercesReturnValue) {
    );
 
    EXPECT_EQ(result.exitCode, 8);
+   ASSERT_FALSE(result.errors.empty());
+   EXPECT_EQ(result.errors.back().message, "cannot assign float to int; converting value");
+}
+
+TEST(InterpreterFunctionTests, AllowsIntArgumentForFloatParameter) {
+   auto result = interpretSource(
+      "fun half(value: float) -> int {\n"
+      "   return (value / 2.0) as int\n"
+      "}\n"
+      "fun main() -> int {\n"
+      "   return half(8)\n"
+      "}\n"
+   );
+
+   EXPECT_EQ(result.exitCode, 4);
    EXPECT_TRUE(result.errors.empty());
 }
 
-TEST(InterpreterFunctionTests, RejectsFloatArgumentForIntParameter) {
+TEST(InterpreterFunctionTests, ReportsFloatArgumentForIntParameterAndConverts) {
    auto result = interpretSource(
       "fun median3(a: int, b: int, c: int) -> int {\n"
       "   return c\n"
@@ -40,9 +55,9 @@ TEST(InterpreterFunctionTests, RejectsFloatArgumentForIntParameter) {
       "}\n"
    );
 
-   EXPECT_EQ(result.exitCode, 1);
+   EXPECT_EQ(result.exitCode, 3);
    ASSERT_FALSE(result.errors.empty());
-   EXPECT_EQ(result.errors.back().message, "cannot pass float to parameter 'c' of type int");
+   EXPECT_EQ(result.errors.back().message, "cannot pass float to parameter 'c' of type int; converting value");
 }
 
 TEST(InterpreterFunctionTests, KeepsFunctionLocalsIsolatedBetweenCalls) {

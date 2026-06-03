@@ -120,3 +120,27 @@ TEST_F(InterpreterImportTests, RejectsMemberAccessToNotImportedName) {
    ASSERT_TRUE(errorHandler.hasErrors());
    EXPECT_EQ(errorHandler.errors().back().message, "imported member is not exported: file1.BASE");
 }
+
+TEST_F(InterpreterImportTests, ReportsDuplicateImportedConstantAndKeepsFirstValue) {
+   const auto dir = testDirectory();
+   writeFile(
+      dir / "file1.djm",
+      "int VALUE = 10\n"
+      "int VALUE = 99\n"
+   );
+   writeFile(
+      dir / "main.djm",
+      "import VALUE from \"file1.djm\"\n"
+      "fun main() -> int {\n"
+      "   return file1.VALUE\n"
+      "}\n"
+   );
+
+   ErrorHandler errorHandler;
+   EXPECT_EQ(interpretFile(dir / "main.djm", errorHandler), 10);
+   ASSERT_TRUE(errorHandler.hasErrors());
+   EXPECT_EQ(
+      errorHandler.errors().back().message,
+      "global constant already defined in import: VALUE; keeping previous value"
+   );
+}

@@ -22,6 +22,11 @@ bool isNumeric(const RuntimeType& type) {
           type.kind() == RuntimeType::Kind::Char;
 }
 
+bool isAllowedImplicitConversion(const RuntimeType& valueType, const RuntimeType& targetType) {
+   return valueType.kind() == RuntimeType::Kind::Int &&
+          targetType.kind() == RuntimeType::Kind::Float;
+}
+
 int64_t toSignedInteger(const Value& value) {
    switch (value.type().kind()) {
       case RuntimeType::Kind::Int: return std::get<int64_t>(value.data());
@@ -138,7 +143,6 @@ void Interpreter::visit(const Program& node) {
       declaration->accept(*this);
    }
 
-   Callable& main = environment_.findFunction("main", node.location());
    const FunctionDeclaration* mainDeclaration = nullptr;
    for (const auto& function : node.functionDeclarations()) {
       if (function->name() == "main") {
@@ -147,11 +151,16 @@ void Interpreter::visit(const Program& node) {
       }
    }
 
+   if (mainDeclaration == nullptr) {
+      throw RuntimeError("function not found: main", node.location());
+   }
+
+   Callable& main = environment_.findFunction("main", node.location());
    std::vector<Value> args;
 
    bool shouldExecuteMainWithoutParameters = false;
 
-   if (main.arity() == 1 && mainDeclaration != nullptr && mainSignatureIsValid(*mainDeclaration)) {
+   if (main.arity() == 1 && mainSignatureIsValid(*mainDeclaration)) {
       ValueList values;
       for (const auto& arg : programArgs_) {
          values.push_back(Value::stringValue(arg));
@@ -168,8 +177,6 @@ void Interpreter::visit(const Program& node) {
    if (shouldExecuteMainWithoutParameters && mainDeclaration != nullptr) {
       lastValue_ = executeMainWithoutParameters(*mainDeclaration);
       return;
-   } else if (shouldExecuteMainWithoutParameters) {
-      throw RuntimeError("function not found: main", node.location());
    }
 
    lastValue_ = main.call(*this, args, node.location());
@@ -1012,7 +1019,10 @@ void Interpreter::evaluateImportedGlobalConstant(const GlobalConstantDeclaration
 
    for (const auto& name : declaration.names()) {
       if (!module.constants.emplace(name.name, std::make_shared<ValueObject>(cloneValue(value), false)).second) {
-         throw RuntimeError("global constant already defined in import: " + name.name, name.location);
+         reportRuntimeError(RuntimeError(
+            "global constant already defined in import: " + name.name + "; keeping previous value",
+            name.location
+         ));
       }
    }
 }
@@ -1129,12 +1139,31 @@ Value Interpreter::coerceForParameter(
       return Value::listValue(targetType.elementType(), {});
    }
 
-   throw RuntimeError(
-      "cannot pass " + value.type().toString() +
-      " to parameter '" + parameterName +
-      "' of type " + targetType.toString(),
-      location
-   );
+   if (!isAllowedImplicitConversion(value.type(), targetType)) {
+      reportRuntimeError(RuntimeError(
+         "cannot pass " + value.type().toString() +
+         " to parameter '" + parameterName +
+         "' of type " + targetType.toString() +
+         "; converting value",
+         location
+      ));
+   }
+
+   try {
+      return castValue(value, targetType);
+   } catch (const RuntimeValueOutOfRange& error) {
+      reportRuntimeError(RuntimeError(error.what(), location));
+      return cloneValue(error.wrappedValue());
+   } catch (const RuntimeValueInvalidStringCast& error) {
+      throw RuntimeError(error.what(), location);
+   } catch (const std::runtime_error&) {
+      throw RuntimeError(
+         "cannot pass " + value.type().toString() +
+         " to parameter '" + parameterName +
+         "' of type " + targetType.toString(),
+         location
+      );
+   }
 }
 
 Value Interpreter::coerceForAssignment(Value value, const RuntimeType& targetType, const SourceLocation& location) {
@@ -1155,19 +1184,24 @@ Value Interpreter::coerceForAssignment(Value value, const RuntimeType& targetTyp
       return Value::listValue(targetType.elementType(), {});
    }
 
-   if (isNumeric(value.type()) && isNumeric(targetType)) {
-      try {
-         return castValue(value, targetType);
-      } catch (const RuntimeValueOutOfRange& error) {
-         reportRuntimeError(RuntimeError(error.what(), location));
-         return cloneValue(error.wrappedValue());
-      } catch (const RuntimeValueInvalidStringCast& error) {
-         throw RuntimeError(error.what(), location);
-      } catch (const std::runtime_error&) {
-      }
+   if (!isAllowedImplicitConversion(value.type(), targetType)) {
+      reportRuntimeError(RuntimeError(
+         "cannot assign " + value.type().toString() + " to " +
+         targetType.toString() + "; converting value",
+         location
+      ));
    }
 
-   throw RuntimeError("cannot assign " + value.type().toString() + " to " + targetType.toString(), location);
+   try {
+      return castValue(value, targetType);
+   } catch (const RuntimeValueOutOfRange& error) {
+      reportRuntimeError(RuntimeError(error.what(), location));
+      return cloneValue(error.wrappedValue());
+   } catch (const RuntimeValueInvalidStringCast& error) {
+      throw RuntimeError(error.what(), location);
+   } catch (const std::runtime_error&) {
+      throw RuntimeError("cannot assign " + value.type().toString() + " to " + targetType.toString(), location);
+   }
 }
 
 bool Interpreter::mainSignatureIsValid(const FunctionDeclaration& declaration) const {

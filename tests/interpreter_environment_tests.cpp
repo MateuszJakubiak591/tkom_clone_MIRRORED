@@ -41,6 +41,21 @@ TEST(InterpreterEnvironmentTests, RejectsAssignmentToImmutableVariable) {
    EXPECT_EQ(result.errors.back().message, "cannot assign to immutable variable; assignment skipped");
 }
 
+TEST(InterpreterEnvironmentTests, ReportsAssignmentMismatchAndConverts) {
+   auto result = interpretSource(
+      "fun main() -> int {\n"
+      "   mut int value = 3.4\n"
+      "   value = 5.8\n"
+      "   return value\n"
+      "}\n"
+   );
+
+   EXPECT_EQ(result.exitCode, 5);
+   ASSERT_EQ(result.errors.size(), 2);
+   EXPECT_EQ(result.errors[0].message, "cannot assign float to int; converting value");
+   EXPECT_EQ(result.errors[1].message, "cannot assign float to int; converting value");
+}
+
 TEST(InterpreterEnvironmentTests, KeepsBlockScopeLocal) {
    auto result = interpretSource(
       "fun main() -> int {\n"
