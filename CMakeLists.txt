@@ -98,6 +98,11 @@ target_link_libraries(runtime_value_tests PRIVATE djm_core gtest_main)
 target_include_directories(runtime_value_tests PRIVATE ${TEST_INCLUDES})
 gtest_discover_tests(runtime_value_tests)
 
+add_executable(environment_tests tests/environment_tests.cpp)
+target_link_libraries(environment_tests PRIVATE djm_core gtest_main)
+target_include_directories(environment_tests PRIVATE ${TEST_INCLUDES})
+gtest_discover_tests(environment_tests)
+
 add_executable(interpreter_import_tests tests/interpreter_import_tests.cpp)
 target_link_libraries(interpreter_import_tests PRIVATE djm_core gtest_main)
 target_include_directories(interpreter_import_tests PRIVATE ${TEST_INCLUDES})

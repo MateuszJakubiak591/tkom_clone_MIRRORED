@@ -52,6 +52,22 @@ Value makeNumericResult(const RuntimeType& type, double floatValue, int64_t intV
 
    return Value::voidValue();
 }
+
+void requireSameListOperands(
+   const Value& left,
+   const Value& right,
+   const std::string& operation,
+   const SourceLocation& location
+) {
+   if (left.type().kind() != RuntimeType::Kind::List ||
+       right.type().kind() != RuntimeType::Kind::List ||
+       left.type() != right.type()) {
+      throw RuntimeError(
+         "operator " + operation + " requires lists of the same type",
+         location
+      );
+   }
+}
 }
 
 Interpreter::Interpreter(ErrorHandler* errorHandler, std::ostream* output, std::string mainFilePath)
@@ -367,8 +383,57 @@ void Interpreter::visit(const AddExpression& node) {
    lastValue_ = evaluateBinaryNumeric(node, '+');
 }
 
-void Interpreter::visit(const SubtractExpression& node) { lastValue_ = evaluateBinaryNumeric(node, '-'); }
-void Interpreter::visit(const MultiplyExpression& node) { lastValue_ = evaluateBinaryNumeric(node, '*'); }
+void Interpreter::visit(const SubtractExpression& node) {
+   Value left = evaluate(node.left());
+   Value right = evaluate(node.right());
+
+   if (left.type().kind() == RuntimeType::Kind::List || right.type().kind() == RuntimeType::Kind::List) {
+      requireSameListOperands(left, right, "-", node.location());
+
+      ValueList result = std::get<ValueList>(left.data());
+      for (const auto& elementToRemove : std::get<ValueList>(right.data())) {
+         auto found = std::find_if(result.begin(), result.end(), [&](const Value& candidate) {
+            return valuesEqual(candidate, elementToRemove);
+         });
+
+         if (found != result.end()) {
+            result.erase(found);
+         }
+      }
+
+      lastValue_ = Value::listValue(left.type().elementType(), std::move(result));
+      return;
+   }
+
+   lastValue_ = evaluateBinaryNumeric(node, '-');
+}
+
+void Interpreter::visit(const MultiplyExpression& node) {
+   Value left = evaluate(node.left());
+   Value right = evaluate(node.right());
+
+   if (left.type().kind() == RuntimeType::Kind::List || right.type().kind() == RuntimeType::Kind::List) {
+      requireSameListOperands(left, right, "*", node.location());
+
+      ValueList result;
+      ValueList remainingRight = std::get<ValueList>(right.data());
+      for (const auto& leftElement : std::get<ValueList>(left.data())) {
+         auto found = std::find_if(remainingRight.begin(), remainingRight.end(), [&](const Value& rightElement) {
+            return valuesEqual(leftElement, rightElement);
+         });
+
+         if (found != remainingRight.end()) {
+            result.push_back(cloneValue(leftElement));
+            remainingRight.erase(found);
+         }
+      }
+
+      lastValue_ = Value::listValue(left.type().elementType(), std::move(result));
+      return;
+   }
+
+   lastValue_ = evaluateBinaryNumeric(node, '*');
+}
 void Interpreter::visit(const DivideExpression& node) { lastValue_ = evaluateBinaryNumeric(node, '/'); }
 void Interpreter::visit(const PowerExpression& node) { lastValue_ = evaluateBinaryNumeric(node, '^'); }
 
@@ -397,13 +462,14 @@ void Interpreter::visit(const ContainsExpression& node) {
    Value left = evaluate(node.left());
    Value right = evaluate(node.right());
 
-   if (left.type().kind() != RuntimeType::Kind::List) {
-      throw RuntimeError("left operand of contains must be a list", node.left().location());
-   }
+   requireSameListOperands(left, right, "contains", node.location());
 
-   const auto& elements = std::get<ValueList>(left.data());
-   lastValue_ = Value::boolValue(std::any_of(elements.begin(), elements.end(), [&](const Value& element) {
-      return valuesEqual(element, right);
+   const auto& leftElements = std::get<ValueList>(left.data());
+   const auto& rightElements = std::get<ValueList>(right.data());
+   lastValue_ = Value::boolValue(std::all_of(rightElements.begin(), rightElements.end(), [&](const Value& required) {
+      return std::any_of(leftElements.begin(), leftElements.end(), [&](const Value& candidate) {
+         return valuesEqual(candidate, required);
+      });
    }));
 }
 
@@ -450,26 +516,44 @@ void Interpreter::visit(const FilterExpression& node) {
 }
 
 void Interpreter::visit(const GroupExpression& node) {
-   Value left = evaluate(node.left());
-   Value right = evaluate(node.right());
-
-   if (left.type().kind() != RuntimeType::Kind::List ||
-       right.type().kind() != RuntimeType::Kind::List ||
-       left.type() != right.type()) {
-      throw RuntimeError("group operator requires lists of the same type", node.location());
+   Value list = evaluate(node.left());
+   if (list.type().kind() != RuntimeType::Kind::List) {
+      throw RuntimeError("group operator requires list on the left side", node.left().location());
    }
 
-   ValueList grouped;
-   const auto& rightElements = std::get<ValueList>(right.data());
-   for (const auto& element : std::get<ValueList>(left.data())) {
-      if (std::any_of(rightElements.begin(), rightElements.end(), [&](const Value& candidate) {
-         return valuesEqual(element, candidate);
-      })) {
-         grouped.push_back(cloneValue(element));
+   std::vector<Value> keys;
+   std::vector<ValueList> groups;
+   std::optional<RuntimeType> keyType;
+
+   for (const auto& element : std::get<ValueList>(list.data())) {
+      Value key = evaluateWithThis(node.right(), element);
+      if (!keyType) {
+         keyType = key.type();
+      } else if (key.type() != *keyType) {
+         throw RuntimeError("group expression must produce homogeneous keys", node.right().location());
+      }
+
+      auto found = std::find_if(keys.begin(), keys.end(), [&](const Value& existingKey) {
+         return valuesEqual(existingKey, key);
+      });
+
+      if (found == keys.end()) {
+         keys.push_back(std::move(key));
+         ValueList newGroup;
+         newGroup.push_back(cloneValue(element));
+         groups.push_back(std::move(newGroup));
+      } else {
+         std::size_t index = static_cast<std::size_t>(std::distance(keys.begin(), found));
+         groups[index].push_back(cloneValue(element));
       }
    }
 
-   lastValue_ = Value::listValue(left.type().elementType(), std::move(grouped));
+   ValueList grouped;
+   for (auto& group : groups) {
+      grouped.push_back(Value::listValue(list.type().elementType(), std::move(group)));
+   }
+
+   lastValue_ = Value::listValue(RuntimeType::listOf(list.type().elementType()), std::move(grouped));
 }
 
 void Interpreter::visit(const NegateExpression& node) {
