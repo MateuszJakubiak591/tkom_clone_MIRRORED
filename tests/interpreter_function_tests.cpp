@@ -16,18 +16,33 @@ TEST(InterpreterFunctionTests, CallsUserFunctionWithArguments) {
    EXPECT_TRUE(result.errors.empty());
 }
 
-TEST(InterpreterFunctionTests, CoercesArgumentsAndReturnValue) {
+TEST(InterpreterFunctionTests, CoercesReturnValue) {
    auto result = interpretSource(
       "fun toInt(value: float) -> int {\n"
       "   return value\n"
       "}\n"
       "fun main() -> int {\n"
-      "   return toInt(8)\n"
+      "   return toInt(8.0)\n"
       "}\n"
    );
 
    EXPECT_EQ(result.exitCode, 8);
    EXPECT_TRUE(result.errors.empty());
+}
+
+TEST(InterpreterFunctionTests, RejectsFloatArgumentForIntParameter) {
+   auto result = interpretSource(
+      "fun median3(a: int, b: int, c: int) -> int {\n"
+      "   return c\n"
+      "}\n"
+      "fun main() -> int {\n"
+      "   return median3(2, 5, 3.4)\n"
+      "}\n"
+   );
+
+   EXPECT_EQ(result.exitCode, 1);
+   ASSERT_FALSE(result.errors.empty());
+   EXPECT_EQ(result.errors.back().message, "cannot pass float to parameter 'c' of type int");
 }
 
 TEST(InterpreterFunctionTests, KeepsFunctionLocalsIsolatedBetweenCalls) {

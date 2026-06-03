@@ -46,3 +46,15 @@ TEST(InterpreterProgramTests, RejectsMainWithUnsupportedArity) {
    ASSERT_FALSE(result.errors.empty());
    EXPECT_EQ(result.errors.back().message, "main must take zero arguments or list<string>");
 }
+
+TEST(InterpreterProgramTests, RejectsMainWithUnsupportedSingleParameterType) {
+   auto result = interpretSource(
+      "fun main(x: int) -> int {\n"
+      "   return x\n"
+      "}\n"
+   );
+
+   EXPECT_EQ(result.exitCode, 1);
+   ASSERT_FALSE(result.errors.empty());
+   EXPECT_EQ(result.errors.back().message, "main must take zero arguments or list<string>");
+}

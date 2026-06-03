@@ -135,7 +135,14 @@ private:
    );
    Value evaluateBinaryNumeric(const BinaryExpression& node, char operation);
    Value evaluateComparison(const BinaryExpression& node, const std::string& operation);
+   Value coerceForParameter(
+      Value value,
+      const RuntimeType& targetType,
+      const std::string& parameterName,
+      const SourceLocation& location
+   );
    Value coerceForAssignment(Value value, const RuntimeType& targetType, const SourceLocation& location);
+   void validateMainSignature(const FunctionDeclaration& declaration);
    bool asBool(const Value& value, const SourceLocation& location) const;
    void executeBlock(const BlockStatement& block, bool createScope);
    void reportRuntimeError(const RuntimeError& error);

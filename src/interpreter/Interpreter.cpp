@@ -86,7 +86,7 @@ Value Interpreter::executeUserFunction(const FunctionDeclaration& declaration, c
       const auto& parameters = declaration.parameters();
       for (std::size_t i = 0; i < parameters.size(); ++i) {
          RuntimeType paramType = runtimeTypeFromNode(*parameters[i].type);
-         Value value = coerceForAssignment(cloneValue(args[i]), paramType, parameters[i].location);
+         Value value = coerceForParameter(cloneValue(args[i]), paramType, parameters[i].name, parameters[i].location);
          environment_.defineVariable(
             parameters[i].name,
             std::make_shared<ValueObject>(std::move(value), true),
@@ -123,9 +123,21 @@ void Interpreter::visit(const Program& node) {
    }
 
    Callable& main = environment_.findFunction("main", node.location());
+   const FunctionDeclaration* mainDeclaration = nullptr;
+   for (const auto& function : node.functionDeclarations()) {
+      if (function->name() == "main") {
+         mainDeclaration = function.get();
+         break;
+      }
+   }
+
    std::vector<Value> args;
 
    if (main.arity() == 1) {
+      if (mainDeclaration != nullptr) {
+         validateMainSignature(*mainDeclaration);
+      }
+
       ValueList values;
       for (const auto& arg : programArgs_) {
          values.push_back(Value::stringValue(arg));
@@ -968,6 +980,30 @@ Value Interpreter::evaluateComparison(const BinaryExpression& node, const std::s
    return Value::boolValue(comparison >= 0);
 }
 
+Value Interpreter::coerceForParameter(
+   Value value,
+   const RuntimeType& targetType,
+   const std::string& parameterName,
+   const SourceLocation& location
+) {
+   if (value.type() == targetType) {
+      return value;
+   }
+
+   if (value.type().kind() == RuntimeType::Kind::List &&
+       targetType.kind() == RuntimeType::Kind::List &&
+       std::get<ValueList>(value.data()).empty()) {
+      return Value::listValue(targetType.elementType(), {});
+   }
+
+   throw RuntimeError(
+      "cannot pass " + value.type().toString() +
+      " to parameter '" + parameterName +
+      "' of type " + targetType.toString(),
+      location
+   );
+}
+
 Value Interpreter::coerceForAssignment(Value value, const RuntimeType& targetType, const SourceLocation& location) {
    if (targetType.kind() == RuntimeType::Kind::Void) {
       if (value.type().kind() == RuntimeType::Kind::Void) {
@@ -999,6 +1035,18 @@ Value Interpreter::coerceForAssignment(Value value, const RuntimeType& targetTyp
    }
 
    throw RuntimeError("cannot assign " + value.type().toString() + " to " + targetType.toString(), location);
+}
+
+void Interpreter::validateMainSignature(const FunctionDeclaration& declaration) {
+   const auto& parameters = declaration.parameters();
+   if (parameters.size() != 1) {
+      return;
+   }
+
+   RuntimeType parameterType = runtimeTypeFromNode(*parameters[0].type);
+   if (parameterType != RuntimeType::listOf(RuntimeType::stringType())) {
+      throw RuntimeError("main must take zero arguments or list<string>", parameters[0].location);
+   }
 }
 
 bool Interpreter::asBool(const Value& value, const SourceLocation& location) const {
