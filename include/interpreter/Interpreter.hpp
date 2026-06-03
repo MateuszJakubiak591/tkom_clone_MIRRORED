@@ -1,17 +1,25 @@
 #pragma once
 
+#include <filesystem>
 #include <iosfwd>
 #include <optional>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "diagnostics/ErrorHandler.hpp"
 #include "interpreter/Environment.hpp"
+#include "syntax/Declarations.hpp"
 #include "syntax/Visitor.hpp"
 
 class Interpreter final : public Visitor {
 public:
-   explicit Interpreter(ErrorHandler* errorHandler = nullptr, std::ostream* output = nullptr);
+   explicit Interpreter(
+      ErrorHandler* errorHandler = nullptr,
+      std::ostream* output = nullptr,
+      std::string mainFilePath = ""
+   );
 
    int interpret(const Program& program, const std::vector<std::string>& args = {});
 
@@ -77,16 +85,54 @@ private:
    struct BreakSignal {};
    struct ContinueSignal {};
 
+   struct ImportedModule {
+      std::filesystem::path path;
+      ProgramPtr program;
+      std::unordered_map<std::string, const FunctionDeclaration*> functions;
+      std::unordered_map<std::string, ValueRef> constants;
+      std::unordered_set<std::string> exportedNames;
+      bool exportsAll = false;
+   };
+
    Environment environment_;
    ErrorHandler* errorHandler_;
    std::ostream* output_;
    std::optional<Value> lastValue_;
    std::optional<Value> currentThis_;
    std::vector<std::string> programArgs_;
+   std::filesystem::path importRoot_;
+   std::unordered_map<std::string, ImportedModule> importedModules_;
+   std::unordered_set<std::string> loadingImportPaths_;
+   ImportedModule* activeModule_ = nullptr;
 
    Value evaluate(const Expression& expression);
    Value evaluateWithThis(const Expression& expression, const Value& thisValue);
    ValueRef resolveAssignable(const Expression& expression);
+   void loadImports(const Program& program);
+   ImportedModule& loadImport(const ImportDeclaration& declaration);
+   void buildImportedModule(ImportedModule& module);
+   void exportImportedNames(ImportedModule& module, const ImportDeclaration& declaration);
+   std::filesystem::path resolveImportPath(const std::string& importPath) const;
+   std::string moduleNameForPath(const std::filesystem::path& path) const;
+   ImportedModule& findImportedModule(const std::string& name, const SourceLocation& location);
+   const FunctionDeclaration& findImportedFunction(
+      ImportedModule& module,
+      const std::string& name,
+      const SourceLocation& location
+   ) const;
+   ValueRef findImportedConstant(
+      ImportedModule& module,
+      const std::string& name,
+      const SourceLocation& location
+   ) const;
+   bool isExported(const ImportedModule& module, const std::string& name) const;
+   void evaluateImportedGlobalConstant(const GlobalConstantDeclaration& declaration, ImportedModule& module);
+   Value callImportedFunction(
+      ImportedModule& module,
+      const FunctionDeclaration& declaration,
+      const std::vector<Value>& args,
+      const SourceLocation& location
+   );
    Value evaluateBinaryNumeric(const BinaryExpression& node, char operation);
    Value evaluateComparison(const BinaryExpression& node, const std::string& operation);
    Value coerceForAssignment(Value value, const RuntimeType& targetType, const SourceLocation& location);

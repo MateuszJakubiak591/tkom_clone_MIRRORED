@@ -2,9 +2,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <iostream>
 #include <limits>
+#include <system_error>
 
+#include "lexer/Lexer.hpp"
+#include "parser/Parser.hpp"
+#include "source/FileSource.hpp"
 #include "syntax/Declarations.hpp"
 #include "syntax/Expressions.hpp"
 #include "syntax/Statements.hpp"
@@ -49,9 +54,15 @@ Value makeNumericResult(const RuntimeType& type, double floatValue, int64_t intV
 }
 }
 
-Interpreter::Interpreter(ErrorHandler* errorHandler, std::ostream* output)
+Interpreter::Interpreter(ErrorHandler* errorHandler, std::ostream* output, std::string mainFilePath)
    : errorHandler_(errorHandler),
-     output_(output == nullptr ? &std::cout : output) {}
+     output_(output == nullptr ? &std::cout : output) {
+   if (mainFilePath.empty()) {
+      importRoot_ = std::filesystem::current_path();
+   } else {
+      importRoot_ = std::filesystem::absolute(std::filesystem::path(mainFilePath)).parent_path();
+   }
+}
 
 int Interpreter::interpret(const Program& program, const std::vector<std::string>& args) {
    programArgs_ = args;
@@ -101,6 +112,7 @@ Value Interpreter::executeUserFunction(const FunctionDeclaration& declaration, c
 
 void Interpreter::visit(const Program& node) {
    environment_.addBuiltins();
+   loadImports(node);
 
    for (const auto& function : node.functionDeclarations()) {
       environment_.addFunction(*function);
@@ -144,7 +156,7 @@ void Interpreter::visit(const GlobalConstantDeclaration& node) {
 }
 
 void Interpreter::visit(const ImportDeclaration& node) {
-   throw RuntimeError("imports are not implemented in the interpreter yet", node.location());
+   loadImport(node);
 }
 
 void Interpreter::visit(const BlockStatement& node) {
@@ -299,7 +311,20 @@ void Interpreter::visit(const ListLiteralExpression& node) {
 }
 
 void Interpreter::visit(const IdentifierExpression& node) {
-   lastValue_ = cloneValue(environment_.findVariable(node.name(), node.location())->value());
+   if (auto value = environment_.tryFindVariable(node.name())) {
+      lastValue_ = cloneValue(value->value());
+      return;
+   }
+
+   if (activeModule_ != nullptr) {
+      auto found = activeModule_->constants.find(node.name());
+      if (found != activeModule_->constants.end()) {
+         lastValue_ = cloneValue(found->second->value());
+         return;
+      }
+   }
+
+   throw RuntimeError("variable not found: " + node.name(), node.location());
 }
 
 void Interpreter::visit(const ThisExpression& node) {
@@ -512,26 +537,65 @@ void Interpreter::visit(const CastExpression& node) {
 }
 
 void Interpreter::visit(const MemberAccessExpression& node) {
-   throw RuntimeError("member access is not supported without classes/import namespaces", node.location());
+   const auto* moduleName = dynamic_cast<const IdentifierExpression*>(&node.object());
+   if (moduleName == nullptr) {
+      throw RuntimeError("member access must have form module.member", node.location());
+   }
+
+   ImportedModule& module = findImportedModule(moduleName->name(), node.object().location());
+   lastValue_ = cloneValue(findImportedConstant(module, node.memberName(), node.location())->value());
 }
 
 void Interpreter::visit(const CallExpression& node) {
-   const auto* name = dynamic_cast<const IdentifierExpression*>(&node.callee());
-   if (name == nullptr) {
-      throw RuntimeError("only direct function calls are supported", node.callee().location());
-   }
-
    std::vector<Value> args;
    for (const auto& argument : node.arguments()) {
       args.push_back(evaluate(*argument));
    }
 
-   Callable& callable = environment_.findFunction(name->name(), node.location());
-   if (callable.arity() != args.size()) {
-      throw RuntimeError("wrong number of arguments for function: " + name->name(), node.location());
+   if (const auto* name = dynamic_cast<const IdentifierExpression*>(&node.callee())) {
+      if (Callable* callable = environment_.tryFindFunction(name->name())) {
+         if (callable->arity() != args.size()) {
+            throw RuntimeError("wrong number of arguments for function: " + name->name(), node.location());
+         }
+
+         lastValue_ = callable->call(*this, args, node.location());
+         return;
+      }
+
+      if (activeModule_ != nullptr) {
+         auto found = activeModule_->functions.find(name->name());
+         if (found != activeModule_->functions.end()) {
+            const FunctionDeclaration& declaration = *found->second;
+            if (declaration.parameters().size() != args.size()) {
+               throw RuntimeError("wrong number of arguments for function: " + name->name(), node.location());
+            }
+
+            lastValue_ = callImportedFunction(*activeModule_, declaration, args, node.location());
+            return;
+         }
+      }
+
+      throw RuntimeError("function not found: " + name->name(), node.location());
    }
 
-   lastValue_ = callable.call(*this, args, node.location());
+   if (const auto* member = dynamic_cast<const MemberAccessExpression*>(&node.callee())) {
+      const auto* moduleName = dynamic_cast<const IdentifierExpression*>(&member->object());
+      if (moduleName == nullptr) {
+         throw RuntimeError("member function call must have form module.member()", node.callee().location());
+      }
+
+      ImportedModule& module = findImportedModule(moduleName->name(), member->object().location());
+      const FunctionDeclaration& declaration = findImportedFunction(module, member->memberName(), node.callee().location());
+
+      if (declaration.parameters().size() != args.size()) {
+         throw RuntimeError("wrong number of arguments for function: " + moduleName->name() + "." + member->memberName(), node.location());
+      }
+
+      lastValue_ = callImportedFunction(module, declaration, args, node.location());
+      return;
+   }
+
+   throw RuntimeError("only direct calls and imported member calls are supported", node.callee().location());
 }
 
 void Interpreter::visit(const IndexExpression& node) {
@@ -634,6 +698,217 @@ ValueRef Interpreter::resolveAssignable(const Expression& expression) {
    }
 
    throw RuntimeError("assignment target is not supported yet", expression.location());
+}
+
+void Interpreter::loadImports(const Program& program) {
+   for (const auto& declaration : program.imports()) {
+      declaration->accept(*this);
+   }
+}
+
+Interpreter::ImportedModule& Interpreter::loadImport(const ImportDeclaration& declaration) {
+   std::filesystem::path resolvedPath = resolveImportPath(declaration.path());
+   const std::string moduleName = moduleNameForPath(resolvedPath);
+   const std::string pathKey = resolvedPath.string();
+
+   if (moduleName.empty()) {
+      throw RuntimeError("import path does not produce a module name: " + declaration.path(), declaration.location());
+   }
+
+   if (loadingImportPaths_.find(pathKey) != loadingImportPaths_.end()) {
+      throw RuntimeError("cyclic import detected: " + resolvedPath.string(), declaration.location());
+   }
+
+   auto existing = importedModules_.find(moduleName);
+   if (existing != importedModules_.end()) {
+      if (existing->second.path != resolvedPath) {
+         throw RuntimeError("import module name already used: " + moduleName, declaration.location());
+      }
+
+      exportImportedNames(existing->second, declaration);
+      return existing->second;
+   }
+
+   loadingImportPaths_.insert(pathKey);
+
+   try {
+      std::size_t errorCountBefore = errorHandler_ == nullptr ? 0 : errorHandler_->errorCount();
+
+      FileSource source(resolvedPath.string());
+      Lexer lexer(source);
+      Parser parser(lexer, errorHandler_);
+      ProgramPtr importedProgram = parser.parseProgram();
+
+      if (importedProgram == nullptr ||
+          (errorHandler_ != nullptr && errorHandler_->errorCount() > errorCountBefore)) {
+         throw RuntimeError("failed to parse imported file: " + resolvedPath.string(), declaration.location());
+      }
+
+      ImportedModule module;
+      module.path = resolvedPath;
+      module.program = std::move(importedProgram);
+
+      auto inserted = importedModules_.emplace(moduleName, std::move(module));
+      ImportedModule& importedModule = inserted.first->second;
+
+      buildImportedModule(importedModule);
+      exportImportedNames(importedModule, declaration);
+
+      loadingImportPaths_.erase(pathKey);
+      return importedModule;
+   } catch (const RuntimeError&) {
+      loadingImportPaths_.erase(pathKey);
+      throw;
+   } catch (const std::exception& error) {
+      loadingImportPaths_.erase(pathKey);
+      throw RuntimeError("cannot import file '" + resolvedPath.string() + "': " + error.what(), declaration.location());
+   }
+}
+
+void Interpreter::buildImportedModule(ImportedModule& module) {
+   loadImports(*module.program);
+
+   for (const auto& function : module.program->functionDeclarations()) {
+      module.functions[function->name()] = function.get();
+   }
+
+   ImportedModule* previousModule = activeModule_;
+   activeModule_ = &module;
+
+   try {
+      for (const auto& declaration : module.program->globalConstantDeclarations()) {
+         evaluateImportedGlobalConstant(*declaration, module);
+      }
+   } catch (...) {
+      activeModule_ = previousModule;
+      throw;
+   }
+
+   activeModule_ = previousModule;
+}
+
+void Interpreter::exportImportedNames(ImportedModule& module, const ImportDeclaration& declaration) {
+   if (declaration.importAll()) {
+      module.exportsAll = true;
+      return;
+   }
+
+   for (const auto& name : declaration.importedNames()) {
+      if (module.functions.find(name) == module.functions.end() &&
+          module.constants.find(name) == module.constants.end()) {
+         throw RuntimeError("imported name not found: " + name, declaration.location());
+      }
+
+      module.exportedNames.insert(name);
+   }
+}
+
+std::filesystem::path Interpreter::resolveImportPath(const std::string& importPath) const {
+   std::filesystem::path path(importPath);
+   if (path.is_relative()) {
+      path = importRoot_ / path;
+   }
+
+   path = std::filesystem::absolute(path).lexically_normal();
+
+   std::error_code error;
+   std::filesystem::path canonical = std::filesystem::weakly_canonical(path, error);
+   if (!error) {
+      return canonical;
+   }
+
+   return path;
+}
+
+std::string Interpreter::moduleNameForPath(const std::filesystem::path& path) const {
+   return path.stem().string();
+}
+
+Interpreter::ImportedModule& Interpreter::findImportedModule(const std::string& name, const SourceLocation& location) {
+   auto found = importedModules_.find(name);
+   if (found == importedModules_.end()) {
+      throw RuntimeError("imported module not found: " + name, location);
+   }
+
+   return found->second;
+}
+
+const FunctionDeclaration& Interpreter::findImportedFunction(
+   ImportedModule& module,
+   const std::string& name,
+   const SourceLocation& location
+) const {
+   if (!isExported(module, name)) {
+      throw RuntimeError("imported member is not exported: " + module.path.stem().string() + "." + name, location);
+   }
+
+   auto found = module.functions.find(name);
+   if (found == module.functions.end()) {
+      if (module.constants.find(name) != module.constants.end()) {
+         throw RuntimeError("imported member is not a function: " + module.path.stem().string() + "." + name, location);
+      }
+
+      throw RuntimeError("imported function not found: " + module.path.stem().string() + "." + name, location);
+   }
+
+   return *found->second;
+}
+
+ValueRef Interpreter::findImportedConstant(
+   ImportedModule& module,
+   const std::string& name,
+   const SourceLocation& location
+) const {
+   if (!isExported(module, name)) {
+      throw RuntimeError("imported member is not exported: " + module.path.stem().string() + "." + name, location);
+   }
+
+   auto found = module.constants.find(name);
+   if (found == module.constants.end()) {
+      if (module.functions.find(name) != module.functions.end()) {
+         throw RuntimeError("imported member is a function and must be called: " + module.path.stem().string() + "." + name, location);
+      }
+
+      throw RuntimeError("imported constant not found: " + module.path.stem().string() + "." + name, location);
+   }
+
+   return found->second;
+}
+
+bool Interpreter::isExported(const ImportedModule& module, const std::string& name) const {
+   return module.exportsAll || module.exportedNames.find(name) != module.exportedNames.end();
+}
+
+void Interpreter::evaluateImportedGlobalConstant(const GlobalConstantDeclaration& declaration, ImportedModule& module) {
+   RuntimeType type = runtimeTypeFromNode(declaration.type());
+   Value value = declaration.initializer() == nullptr
+      ? defaultValueFor(type)
+      : coerceForAssignment(evaluate(*declaration.initializer()), type, declaration.location());
+
+   for (const auto& name : declaration.names()) {
+      if (!module.constants.emplace(name.name, std::make_shared<ValueObject>(cloneValue(value), false)).second) {
+         throw RuntimeError("global constant already defined in import: " + name.name, name.location);
+      }
+   }
+}
+
+Value Interpreter::callImportedFunction(
+   ImportedModule& module,
+   const FunctionDeclaration& declaration,
+   const std::vector<Value>& args,
+   const SourceLocation&
+) {
+   ImportedModule* previousModule = activeModule_;
+   activeModule_ = &module;
+
+   try {
+      Value result = executeUserFunction(declaration, args);
+      activeModule_ = previousModule;
+      return result;
+   } catch (...) {
+      activeModule_ = previousModule;
+      throw;
+   }
 }
 
 Value Interpreter::evaluateBinaryNumeric(const BinaryExpression& node, char operation) {

@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
             programArgs.emplace_back(argv[i]);
          }
 
-         Interpreter interpreter(&errHandler, &std::cout);
+         Interpreter interpreter(&errHandler, &std::cout, path);
          int exitCode = interpreter.interpret(*program, programArgs);
 
          errHandler.printErrors(std::cout);

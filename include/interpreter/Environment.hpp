@@ -77,6 +77,7 @@ public:
    void addBuiltins();
    void addFunction(const FunctionDeclaration& function);
 
+   Callable* tryFindFunction(const std::string& name) const;
    Callable& findFunction(const std::string& name, const SourceLocation& location) const;
 
    void pushCallContext();
@@ -87,6 +88,7 @@ public:
    void popScope();
 
    void defineVariable(const std::string& name, ValueRef value, const SourceLocation& location);
+   ValueRef tryFindVariable(const std::string& name) const;
    ValueRef findVariable(const std::string& name, const SourceLocation& location) const;
    Scope& globalScope();
 

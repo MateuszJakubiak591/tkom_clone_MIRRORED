@@ -84,13 +84,21 @@ void Environment::addFunction(const FunctionDeclaration& function) {
    functions_[function.name()] = std::make_unique<UserFunction>(function);
 }
 
-Callable& Environment::findFunction(const std::string& name, const SourceLocation& location) const {
+Callable* Environment::tryFindFunction(const std::string& name) const {
    auto found = functions_.find(name);
    if (found == functions_.end()) {
-      throw RuntimeError("function not found: " + name, location);
+      return nullptr;
    }
 
-   return *found->second;
+   return found->second.get();
+}
+
+Callable& Environment::findFunction(const std::string& name, const SourceLocation& location) const {
+   if (auto* function = tryFindFunction(name)) {
+      return *function;
+   }
+
+   throw RuntimeError("function not found: " + name, location);
 }
 
 void Environment::pushCallContext() {
@@ -123,7 +131,7 @@ void Environment::defineVariable(const std::string& name, ValueRef value, const 
    }
 }
 
-ValueRef Environment::findVariable(const std::string& name, const SourceLocation& location) const {
+ValueRef Environment::tryFindVariable(const std::string& name) const {
    if (hasCallContext()) {
       const auto& scopes = currentCallContext().scopes;
       for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
@@ -134,6 +142,14 @@ ValueRef Environment::findVariable(const std::string& name, const SourceLocation
    }
 
    if (auto value = globalScope_.findLocal(name)) {
+      return value;
+   }
+
+   return nullptr;
+}
+
+ValueRef Environment::findVariable(const std::string& name, const SourceLocation& location) const {
+   if (auto value = tryFindVariable(name)) {
       return value;
    }
 
