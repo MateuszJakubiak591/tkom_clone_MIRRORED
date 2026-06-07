@@ -1,11 +1,167 @@
-1. W celu zbudowania obrazu dockerowego należy użyć komendy:
-###### docker build -t djm-interpreter . ######
+DJM INTERPRETER
+===============
+
+Projekt zawiera lekser, parser i interpreter jezyka DJM oraz testy jednostkowe.
+Do budowania wykorzystywany jest CMake, a testy sa uruchamiane przez CTest.
 
 
-2. W celu uruchomienia kontenera (domyślnie uruchamiającego testy)
-   należy użyć komendy:s
-###### docker run --rm djm-interpreter   ######
+WYMAGANIA
+---------
+
+Budowanie lokalne wymaga:
+
+- CMake w wersji co najmniej 3.16,
+- kompilatora obslugujacego C++17,
+- Git (CMake pobiera GoogleTest podczas pierwszej konfiguracji),
+- dostepu do Internetu podczas pierwszej konfiguracji.
+
+Na Linuxie mozna uzyc GCC, a na Windowsie kompilatora Visual C++ dostarczanego
+razem z Visual Studio.
 
 
-3. Aby uruchomić lekser na pliku program.djm należy użyć komendy:
-###### docker run --rm djm-interpreter ./build/djm ./src/program.djm ######
+BUDOWANIE NA LINUXIE
+--------------------
+
+Komendy nalezy wykonac w glownym katalogu repozytorium:
+
+    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    cmake --build build --parallel
+
+Plik wykonywalny zostanie utworzony jako:
+
+    ./build/djm
+
+
+URUCHAMIANIE TESTOW LOKALNIE
+----------------------------
+
+Po zbudowaniu projektu wszystkie testy mozna uruchomic poleceniem:
+
+    ctest --test-dir build --output-on-failure
+
+Opcja --output-on-failure wypisuje szczegoly tylko dla testow, ktore sie nie
+powiodly.
+
+Wybrana grupe testow mozna uruchomic przez filtrowanie ich nazw, na przyklad:
+
+    ctest --test-dir build --output-on-failure -R interpreter
+    ctest --test-dir build --output-on-failure -R lexer
+    ctest --test-dir build --output-on-failure -R parser
+
+
+URUCHAMIANIE PROGRAMU DJM LOKALNIE
+----------------------------------
+
+Interpreter przyjmuje jako pierwszy argument sciezke do programu .djm:
+
+    ./build/djm ./src/program_features_functions_and_flow.djm
+
+Kolejne argumenty sa przekazywane do funkcji main programu DJM, jezeli
+przyjmuje ona parametr list<string>:
+
+    ./build/djm ./src/program.djm argument1 argument2
+
+Sciezki importow sa rozwiazywane wzgledem pliku glownego programu. Z tego
+powodu najlepiej przekazywac poprawna sciezke do programu, a nie kopiowac sam
+plik wykonywalny do innego katalogu.
+
+
+BUDOWANIE I URUCHAMIANIE NA WINDOWSIE
+-------------------------------------
+
+Polecenia nalezy wykonac w PowerShellu lub Developer PowerShell for Visual
+Studio:
+
+    cmake -S . -B build
+    cmake --build build --config Release --parallel
+    ctest --test-dir build -C Release --output-on-failure
+
+Dla standardowego wielokonfiguracyjnego generatora Visual Studio interpreter
+znajduje sie w katalogu Release:
+
+    .\build\Release\djm.exe .\src\program_features_functions_and_flow.djm
+
+Gdy uzywany jest generator jednokonfiguracyjny, na przyklad Ninja, plik
+wykonywalny moze znajdowac sie bezposrednio w katalogu build:
+
+    .\build\djm.exe .\src\program_features_functions_and_flow.djm
+
+
+DOCKERFILE
+----------
+
+Dockerfile tworzy powtarzalne srodowisko linuksowe oparte na Ubuntu 24.04.
+W obrazie instalowane sa:
+
+- kompilator i podstawowe narzedzia przez pakiet build-essential,
+- CMake,
+- Git wymagany przez FetchContent do pobrania GoogleTest,
+- GDB przydatny podczas diagnozowania programu.
+
+Nastepnie zawartosc repozytorium jest kopiowana do /app, projekt jest
+konfigurowany oraz budowany. Domyslnym poleceniem obrazu jest uruchomienie
+wszystkich testow.
+
+
+BUDOWANIE OBRAZU DOCKERA
+------------------------
+
+Obraz nalezy zbudowac z glownego katalogu repozytorium:
+
+    docker build -t djm-interpreter .
+
+Podczas pierwszego budowania Docker musi miec dostep do Internetu, poniewaz
+CMake pobiera GoogleTest.
+
+
+URUCHAMIANIE TESTOW W DOCKERZE
+------------------------------
+
+Domyslnie kontener uruchamia wszystkie testy:
+
+    docker run --rm djm-interpreter
+
+Mozna zastapic domyslne polecenie i uruchomic tylko wybrane testy:
+
+    docker run --rm djm-interpreter ctest --test-dir build --output-on-failure -R interpreter
+
+
+URUCHAMIANIE PROGRAMU DJM W DOCKERZE
+------------------------------------
+
+Program znajdujacy sie w repozytorium i skopiowany do obrazu mozna uruchomic
+poleceniem:
+
+    docker run --rm djm-interpreter ./build/djm ./src/program_features_functions_and_flow.djm
+
+Argumenty programu DJM umieszcza sie po sciezce do pliku:
+
+    docker run --rm djm-interpreter ./build/djm ./src/program.djm argument1 argument2
+
+Aby uruchomic plik utworzony po zbudowaniu obrazu, nalezy zamontowac katalog
+hosta w kontenerze. Przyklad dla PowerShella:
+
+    docker run --rm -v "${PWD}:/workspace" djm-interpreter ./build/djm /workspace/src/program.djm
+
+Przyklad dla Bash:
+
+    docker run --rm -v "$(pwd):/workspace" djm-interpreter ./build/djm /workspace/src/program.djm
+
+Montowanie calego katalogu pozwala interpreterowi odnalezc takze pliki
+importowane przez uruchamiany program.
+
+
+PRZYDATNE KOMENDY CZYSZCZACE
+----------------------------
+
+Usuniecie katalogu build wymusza pelna, czysta konfiguracje projektu.
+
+Linux:
+
+    rm -rf build
+
+PowerShell:
+
+    Remove-Item -Recurse -Force build
+
+Po usunieciu katalogu nalezy ponownie wykonac cmake -S . -B build.

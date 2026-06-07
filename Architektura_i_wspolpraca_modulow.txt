@@ -1,0 +1,208 @@
+ARCHITEKTURA I WSPOLPRACA MODULOW
+=================================
+
+1. OGOLNY PRZEPLYW PROGRAMU
+---------------------------
+
+Program napisany w jezyku DJM przechodzi przez kolejne etapy:
+
+plik .djm
+  -> FileSource / CharSource
+  -> Lexer / TokenSource
+  -> Parser
+  -> drzewo AST (Program i pozostale wezly)
+  -> Interpreter wykorzystujacy wzorzec Visitor
+  -> wynik programu
+
+ErrorHandler jest wspolnym mechanizmem diagnostycznym. Parser przekazuje do
+niego bledy skladniowe, a interpreter bledy powstale podczas wykonywania
+programu.
+
+Glowny przeplyw jest koordynowany w pliku main.cpp. Tworzony jest ErrorHandler,
+zrodlo znakow, lekser i parser. Interpreter jest uruchamiany dopiero wtedy, gdy
+parser utworzy AST i nie zostana wykryte bledy uniemozliwiajace rozpoczecie
+wykonywania programu.
+
+
+2. ZRODLO ZNAKOW
+----------------
+
+CharSource jest abstrakcja udostepniajaca znaki programu. Pozwala odczytac
+biezacy i nastepny znak, przesunac pozycje oraz pobrac lokalizacje w kodzie
+zrodlowym.
+
+FileSource implementuje CharSource dla pliku. W testach mozna wykorzystac inne
+zrodlo, na przyklad StringSource, bez koniecznosci tworzenia pliku na dysku.
+
+Lekser nie musi zatem wiedziec, czy analizowany tekst pochodzi z pliku, napisu
+testowego czy innego miejsca. Otrzymuje jedynie jednolity interfejs znakowy.
+
+
+3. LEKSER
+---------
+
+Lexer pobiera kolejne znaki z CharSource i laczy je w tokeny. Rozpoznaje miedzy
+innymi identyfikatory, slowa kluczowe, operatory, nawiasy oraz literaly.
+
+Wejsciem leksera jest strumien znakow, a wyjsciem strumien obiektow Token.
+Kazdy token zawiera rodzaj, wartosc tekstowa i lokalizacje w pliku. Lokalizacja
+jest pozniej wykorzystywana do wskazania miejsca bledu.
+
+Lexer implementuje interfejs TokenSource. Dzieki temu parser nie zalezy
+bezposrednio od konkretnej implementacji leksera. Lexer nie rozumie jeszcze
+znaczenia calego programu. Na tym etapie na przyklad rozpoznaje token slowa
+"if", ale nie sprawdza, czy instrukcja warunkowa jest poprawnie zbudowana.
+
+
+4. PARSER I AST
+---------------
+
+Parser pobiera tokeny z TokenSource i sprawdza, czy tworza konstrukcje zgodne
+z gramatyka jezyka. Na ich podstawie buduje abstrakcyjne drzewo skladniowe AST.
+
+Korzeniem drzewa jest Program. Pod nim znajduja sie deklaracje funkcji, stale
+globalne, importy, instrukcje oraz wyrazenia. Po utworzeniu AST dalsze etapy nie
+musza juz operowac na pojedynczych tokenach.
+
+Przyklad:
+
+int x = 2 + 3
+
+Lexer tworzy tokeny odpowiadajace typowi, nazwie, operatorowi przypisania,
+liczbom i operatorowi dodawania. Parser laczy je w deklaracje zmiennej, ktorej
+wartoscia poczatkowa jest wezel wyrazenia dodawania.
+
+Gdy parser napotka blad skladniowy, przekazuje komunikat wraz z lokalizacja do
+ErrorHandlera. Funkcja main.cpp nie uruchamia interpretera, jezeli po parsowaniu
+ErrorHandler zawiera bledy.
+
+AST stanowi granice pomiedzy parserem i interpreterem: parser odpowiada za jego
+utworzenie, a interpreter za nadanie mu zachowania.
+
+
+5. INTERPRETER I WZORZEC VISITOR
+--------------------------------
+
+Interpreter implementuje interfejs Visitor. Kazdy konkretny wezel AST posiada
+metode accept, ktora wywoluje odpowiednia metode visit interpretera.
+
+Przykladowo wezel wyrazenia dodawania przekazuje sterowanie do metody visit
+obslugujacej dodawanie. Interpreter najpierw oblicza lewe i prawe podwyrazenie,
+a nastepnie tworzy wynikowa wartosc.
+
+Interpreter przechodzi po AST i realizuje semantyke jezyka:
+
+- wykonuje instrukcje,
+- oblicza wyrazenia,
+- wywoluje funkcje,
+- obsluguje zwracanie wartosci i petle,
+- zarzadza zmiennymi oraz zasiegami,
+- wykonuje konwersje typow,
+- obsluguje funkcje wbudowane,
+- laduje importowane moduly.
+
+Wynik ostatnio obliczonego wezla jest przechowywany w lastValue_. Metoda
+evaluate uruchamia accept dla wyrazenia i pobiera ten wynik. Pozwala to zachowac
+jednolity interfejs Visitor, ktorego metody visit nie zwracaja bezposrednio
+wartosci.
+
+
+6. ENVIRONMENT I WARTOSCI WYKONAWCZE
+-------------------------------------
+
+Environment jest tablica symboli uzywana podczas wykonywania programu.
+Przechowuje funkcje, zmienne i kolejne zasiegi. Interpreter korzysta z niego,
+gdy deklaruje zmienna, odczytuje identyfikator, wykonuje przypisanie albo
+wywoluje funkcje.
+
+Wejscie do bloku lub funkcji moze utworzyc nowy zasieg. Po jego opuszczeniu
+lokalne symbole sa usuwane, natomiast symbole z zasiegow zewnetrznych pozostaja
+dostepne zgodnie z zasadami jezyka.
+
+RuntimeValue definiuje typy i wartosci istniejace podczas interpretacji, na
+przyklad int, uint, float, string oraz listy. Interpreter nie operuje na
+tekstowej postaci literalu, lecz na sprawdzonych obiektach Value. RuntimeValue
+realizuje tez konwersje oraz wykrywa ich bledy, w tym wyjscie poza zakres.
+
+
+7. ERRORHANDLER
+---------------
+
+ErrorHandler centralizuje diagnostyke programu. Otrzymuje rodzaj bledu,
+komunikat i lokalizacje, przechowuje je oraz potrafi wypisac je razem z
+odpowiednim fragmentem kodu zrodlowego.
+
+Sam ErrorHandler nie decyduje, czy program powinien kontynuowac dzialanie.
+Decyzje podejmuje modul, ktory wykryl problem:
+
+- parser zglasza bledy skladniowe, po ktorych interpreter nie jest uruchamiany,
+- interpreter moze zglosic blad i przerwac wykonanie,
+- interpreter moze tez zglosic blad naprawialny, zastosowac wartosc zastepcza
+  lub pominac niepoprawna operacje i kontynuowac.
+
+Parser i Interpreter moga otrzymac ErrorHandler z zewnatrz. Jezeli nie zostanie
+podany, wykorzystuja NullErrorHandler, ktory zachowuje wspolny interfejs, ale
+nie wymaga specjalnego sprawdzania wskaznika przed kazdym zgloszeniem.
+
+
+8. IMPORTOWANIE MODULOW
+-----------------------
+
+Import jest obslugiwany podczas interpretacji Programu. Interpreter odczytuje
+wskazany plik i tworzy dla niego nowy lancuch:
+
+FileSource -> Lexer -> Parser -> AST importowanego modulu
+
+Nastepnie rejestruje wybrane funkcje i stale w strukturze reprezentujacej
+modul. Dostep do nich odbywa sie przez wyrazenie MemberAccess, na przyklad:
+
+file1.fun1()
+
+Interpreter przechowuje juz zaladowane moduly, aby moc ponownie korzystac z ich
+symboli. Importowane pliki korzystaja z tego samego mechanizmu diagnostycznego,
+wiec bledy znalezione podczas ich parsowania lub wykonywania trafiaja do
+ErrorHandlera.
+
+Obecne rozwiazanie oznacza, ze Interpreter zna klasy FileSource, Lexer i Parser.
+Jest to praktyczne, ale zwieksza powiazanie modulow. W wiekszym projekcie
+ladowanie i buforowanie importow mozna byloby przeniesc do osobnego
+ModuleLoadera, ktory dostarczalby interpreterowi gotowe AST modulow.
+
+
+9. PRZYKLADOWY PRZEPLYW WYKONANIA
+---------------------------------
+
+Dla instrukcji:
+
+int x = 2 + 3
+
+przebieg jest nastepujacy:
+
+1. FileSource udostepnia lekserowi kolejne znaki.
+2. Lexer tworzy tokeny reprezentujace deklaracje oraz wyrazenie.
+3. Parser buduje wezel deklaracji zmiennej z wewnetrznym wezlem dodawania.
+4. Interpreter odwiedza deklaracje.
+5. Interpreter odwiedza oba literaly i wyrazenie dodawania.
+6. RuntimeValue reprezentuje liczby oraz wynik operacji.
+7. Environment zapisuje symbol x i obliczona wartosc 5.
+8. Jezeli na dowolnym etapie wystapi blad, odpowiedni modul przekazuje
+   diagnostyke do ErrorHandlera.
+
+
+10. PODZIAL ODPOWIEDZIALNOSCI
+-----------------------------
+
+Najwazniejsza zasada architektury polega na tym, ze kazdy modul odpowiada za
+inny poziom rozumienia programu:
+
+- CharSource udostepnia znaki i ich polozenie.
+- Lexer rozumie pojedyncze elementy leksykalne.
+- Parser rozumie strukture skladniowa i buduje AST.
+- AST przechowuje strukture programu niezalezna od sposobu wykonania.
+- Interpreter rozumie semantyke i wykonuje AST.
+- Environment oraz RuntimeValue dostarczaja interpreterowi stan i wartosci.
+- ErrorHandler zapewnia wspolny format diagnostyki dla wszystkich etapow.
+
+Taki podzial pozwala testowac moduly osobno. Lekser mozna testowac na sztucznym
+zrodle znakow, parser na sztucznym zrodle tokenow, a interpreter na gotowym AST
+lub na programie przechodzacym przez caly lancuch.
