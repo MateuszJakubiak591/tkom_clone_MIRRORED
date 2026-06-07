@@ -1,0 +1,79 @@
+// Demonstracja sterowania przeplywem w zagniezdzonych blokach.
+//
+// breakNearestLoop pokazuje, ze break konczy tylko najblizsza petle.
+// Instrukcja break znajduje sie w dodatkowym bloku wewnatrz petli inner.
+// Po jej wykonaniu interpreter opuszcza petle inner, ale kontynuuje petle
+// outer. Funkcja wykona trzy iteracje zewnetrzne i zwroci 36.
+//
+// returnFromNestedBlocks pokazuje, ze return przerywa cala funkcje.
+// Gdy outer == 3 oraz inner == 4, return musi opuscic dodatkowy blok,
+// obie petle oraz funkcje. Kod po return nie zostanie wykonany.
+
+fun breakNearestLoop() -> int {
+   mut int outer = 0
+   mut int result = 0
+
+   while outer < 3 {
+      outer = outer + 1
+      mut int inner = 0
+
+      while inner < 5 {
+         inner = inner + 1
+
+         {
+            if inner == 3 {
+               break
+            }
+
+            result = result + 1
+         }
+      }
+
+      // Ta instrukcja wykonuje sie po break, poniewaz zakonczona zostala
+      // tylko petla inner, a nie petla outer ani cala funkcja.
+      result = result + 10
+   }
+
+   return result
+}
+
+fun returnFromNestedBlocks() -> int {
+   mut int outer = 0
+
+   while outer < 5 {
+      outer = outer + 1
+
+      {
+         mut int inner = 0
+
+         while inner < 5 {
+            inner = inner + 1
+
+            {
+               if outer == 3 {
+                  if inner == 4 {
+                     return outer * 10 + inner
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   // Ta wartosc zostalaby zwrocona tylko wtedy, gdy warunek powyzej nigdy
+   // nie zostalby spelniony.
+   return -1
+}
+
+fun main() -> int {
+   int breakResult = breakNearestLoop()
+   int returnResult = returnFromNestedBlocks()
+
+   // Oczekiwane wyniki:
+   // breakResult  = 36
+   // returnResult = 34
+   println(breakResult)
+   println(returnResult)
+
+   return breakResult + returnResult
+}
