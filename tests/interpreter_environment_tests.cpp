@@ -54,6 +54,13 @@ TEST(InterpreterEnvironmentTests, ReportsAssignmentMismatchAndConverts) {
    ASSERT_EQ(result.errors.size(), 2);
    EXPECT_EQ(result.errors[0].message, "cannot assign float to int; converting value");
    EXPECT_EQ(result.errors[1].message, "cannot assign float to int; converting value");
+   EXPECT_NE(
+      result.output.find(
+         "NON-FATAL Runtime Error at interpreter_test.djm:2:4: "
+         "cannot assign float to int; converting value"
+      ),
+      std::string::npos
+   );
 }
 
 TEST(InterpreterEnvironmentTests, AllowsNonNegativeIntAssignmentToUint) {

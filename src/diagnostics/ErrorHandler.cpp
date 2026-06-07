@@ -43,7 +43,11 @@ void ErrorHandler::printLastWarning(std::ostream& out) const {
    }
 
    const Error& error = errors_.back();
-   out << error.toString() << "\n";
+   out << "NON-FATAL " << errorTypeToString(error.type) << " Error "
+       << "at " << error.location.filename
+       << ":" << error.location.line
+       << ":" << error.location.column
+       << ": " << error.message << "\n";
    printSourceSnippet(out, error.location);
    out << "\n";
 }

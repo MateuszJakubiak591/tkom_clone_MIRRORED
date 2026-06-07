@@ -30,7 +30,7 @@ public:
 
    /// Prints all diagnostics accumulated so far.
    void printErrors(std::ostream& out) const;
-   /// Prints only the newest diagnostic, used for live interpreter feedback.
+   /// Prints the newest diagnostic as a non-fatal live interpreter warning.
    virtual void printLastWarning(std::ostream& out) const;
 
 private:
