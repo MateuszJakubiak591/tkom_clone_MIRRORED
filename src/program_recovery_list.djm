@@ -1,0 +1,9 @@
+// Demonstracja naprawy niejednorodnego literalu listy.
+// Pierwszy element ustala typ listy na int. Elementy "tekst" i 3.5 sa
+// pomijane po zgloszeniu bledow, a wynikowa lista zawiera [1, 2, 4].
+
+fun main() -> int {
+   list<int> values = [1, "tekst", 2, 3.5, 4]
+   println(values)
+   return count values
+}

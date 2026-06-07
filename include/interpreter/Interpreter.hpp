@@ -1,5 +1,8 @@
 #pragma once
 
+/// @file Interpreter.hpp
+/// Visitor-based execution engine for parsed DJM programs.
+
 #include <filesystem>
 #include <iosfwd>
 #include <optional>
@@ -13,16 +16,23 @@
 #include "syntax/Declarations.hpp"
 #include "syntax/Visitor.hpp"
 
+/// Executes a parsed DJM Program by visiting declarations, statements and expressions.
+///
+/// The interpreter owns runtime scopes, imported modules and recoverable diagnostic
+/// policy. Expression visits publish their result through lastValue_.
 class Interpreter final : public Visitor {
 public:
+   /// Creates an interpreter; null handlers and streams receive safe defaults.
    explicit Interpreter(
       ErrorHandler* errorHandler = nullptr,
       std::ostream* output = nullptr,
       std::string mainFilePath = ""
    );
 
+   /// Executes a complete program and returns the integer process exit code.
    int interpret(const Program& program, const std::vector<std::string>& args = {});
 
+   /// Invokes a user function in a fresh call context.
    Value executeUserFunction(const FunctionDeclaration& declaration, const std::vector<Value>& args);
 
    void visit(const Program& node) override;

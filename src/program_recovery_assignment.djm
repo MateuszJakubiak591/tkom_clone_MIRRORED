@@ -1,0 +1,9 @@
+// Demonstracja przypisania do niemutowalnej zmiennej.
+// Interpreter zglasza blad i pomija przypisanie, dlatego value nadal ma 10.
+
+fun main() -> int {
+   int value = 10
+   value = 99
+   println(value)
+   return value
+}

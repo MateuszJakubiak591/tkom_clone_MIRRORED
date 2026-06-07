@@ -1,0 +1,12 @@
+PROJECT_NAME           = "DJM Interpreter"
+OUTPUT_DIRECTORY       = docs/generated
+INPUT                  = include src
+RECURSIVE              = YES
+FILE_PATTERNS           = *.hpp *.cpp
+EXCLUDE_PATTERNS        = */build/* */docs/generated/*
+EXTRACT_ALL             = YES
+EXTRACT_PRIVATE         = NO
+GENERATE_HTML            = YES
+GENERATE_LATEX           = NO
+QUIET                   = YES
+WARN_IF_UNDOCUMENTED    = NO

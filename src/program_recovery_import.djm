@@ -1,0 +1,9 @@
+// Demonstracja naprawy duplikatu stalej globalnej w importowanym module.
+// Interpreter zachowuje pierwsza wartosc VALUE, czyli 10, i wykonuje main dalej.
+
+import VALUE from "program_recovery_import_module.djm"
+
+fun main() -> int {
+   println(program_recovery_import_module.VALUE)
+   return program_recovery_import_module.VALUE
+}

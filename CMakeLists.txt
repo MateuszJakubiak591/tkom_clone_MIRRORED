@@ -6,6 +6,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(MSVC)
+   # The interpreter uses exceptions for runtime errors and control-flow signals.
+   add_compile_options(/EHsc)
+endif()
+
 ########################################################################
 add_library(djm_core
    src/syntax/Node.cpp

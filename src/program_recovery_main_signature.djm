@@ -1,0 +1,8 @@
+// Demonstracja odzyskiwania po niepoprawnej sygnaturze funkcji main.
+// main powinna nie miec parametrow albo przyjmowac list<string>.
+// Interpreter zglasza problem, pomija parametr x i wykonuje cialo jak dla main().
+
+fun main(x: int) -> int {
+   println("main wykonana bez parametrow")
+   return 7
+}

@@ -1,5 +1,8 @@
 #pragma once
 
+/// @file RuntimeValue.hpp
+/// Type-safe runtime values, storage cells and conversion helpers.
+
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
@@ -9,8 +12,10 @@
 
 #include "syntax/Type.hpp"
 
+/// Runtime representation of a DJM type, including recursively nested list types.
 class RuntimeType {
 public:
+   /// Closed set of type categories supported by the interpreter.
    enum class Kind {
       Void,
       Int,
@@ -29,9 +34,12 @@ public:
    static RuntimeType boolType();
    static RuntimeType charType();
    static RuntimeType stringType();
+   /// Creates a list type whose element type remains valid with the returned object.
    static RuntimeType listOf(RuntimeType elementType);
 
+   /// Returns the top-level category of this type.
    Kind kind() const;
+   /// Returns the list element type; throws when called for a non-list type.
    const RuntimeType& elementType() const;
 
    bool operator==(const RuntimeType& other) const;
@@ -50,6 +58,7 @@ RuntimeType runtimeTypeFromNode(const TypeNode& node);
 class Value;
 using ValueList = std::vector<Value>;
 
+/// Immutable, type-consistent runtime value created only through named factories.
 class Value {
 public:
    using Data = std::variant<
@@ -70,9 +79,12 @@ public:
    static Value boolValue(bool value);
    static Value charValue(char value);
    static Value stringValue(std::string value);
+   /// Creates a homogeneous list value with the explicitly provided element type.
    static Value listValue(RuntimeType elementType, ValueList elements);
 
+   /// Returns the DJM runtime type matching the active variant alternative.
    const RuntimeType& type() const;
+   /// Exposes immutable payload data for type-directed interpreter operations.
    const Data& data() const;
 
    std::string toString() const;
@@ -84,6 +96,7 @@ private:
    Data data_;
 };
 
+/// Variable storage cell that adds mutability semantics to an immutable Value.
 class ValueObject {
 public:
    ValueObject(Value value, bool isMutable);
@@ -92,6 +105,7 @@ public:
    const Value& value() const;
    bool isMutable() const;
 
+   /// Replaces the stored value; the caller must validate type and mutability first.
    void assign(Value value);
 
 private:
@@ -106,6 +120,7 @@ public:
    explicit RuntimeValueInvalidStringCast(const std::string& message);
 };
 
+/// Signals a lossy numeric cast and carries the deterministic wrapped result.
 class RuntimeValueOutOfRange final : public std::runtime_error {
 public:
    RuntimeValueOutOfRange(const std::string& message, Value wrappedValue);
@@ -124,4 +139,5 @@ Value defaultValueFor(const RuntimeType& type);
 Value cloneValue(const Value& value);
 bool valuesEqual(const Value& left, const Value& right);
 int compareValues(const Value& left, const Value& right);
+/// Explicitly converts a value and reports invalid or out-of-range conversions by exception.
 Value castValue(const Value& value, const RuntimeType& targetType);

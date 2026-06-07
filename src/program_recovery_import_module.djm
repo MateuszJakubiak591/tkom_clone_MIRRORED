@@ -1,0 +1,5 @@
+// Modul pomocniczy celowo deklaruje VALUE dwa razy.
+// Podczas importu interpreter zglasza duplikat i zachowuje pierwsza wartosc.
+
+int VALUE = 10
+int VALUE = 99

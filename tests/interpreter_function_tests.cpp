@@ -31,7 +31,7 @@ TEST(InterpreterFunctionTests, ReportsReturnValueMismatchAndConverts) {
    EXPECT_EQ(result.errors.back().message, "cannot assign float to int; converting value");
 }
 
-TEST(InterpreterFunctionTests, AllowsIntArgumentForFloatParameter) {
+TEST(InterpreterFunctionTests, ReportsIntArgumentForFloatParameterAndConverts) {
    auto result = interpretSource(
       "fun half(value: float) -> int {\n"
       "   return (value / 2.0) as int\n"
@@ -42,7 +42,8 @@ TEST(InterpreterFunctionTests, AllowsIntArgumentForFloatParameter) {
    );
 
    EXPECT_EQ(result.exitCode, 4);
-   EXPECT_TRUE(result.errors.empty());
+   ASSERT_FALSE(result.errors.empty());
+   EXPECT_EQ(result.errors.back().message, "cannot pass int to parameter 'value' of type float; converting value");
 }
 
 TEST(InterpreterFunctionTests, ReportsFloatArgumentForIntParameterAndConverts) {

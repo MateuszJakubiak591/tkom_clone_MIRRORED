@@ -56,6 +56,33 @@ TEST(InterpreterEnvironmentTests, ReportsAssignmentMismatchAndConverts) {
    EXPECT_EQ(result.errors[1].message, "cannot assign float to int; converting value");
 }
 
+TEST(InterpreterEnvironmentTests, AllowsNonNegativeIntAssignmentToUint) {
+   auto result = interpretSource(
+      "fun main() -> int {\n"
+      "   uint value = 5\n"
+      "   return value as int\n"
+      "}\n"
+   );
+
+   EXPECT_EQ(result.exitCode, 5);
+   EXPECT_TRUE(result.errors.empty());
+}
+
+TEST(InterpreterEnvironmentTests, ReportsNegativeIntAssignmentToUint) {
+   auto result = interpretSource(
+      "fun main() -> int {\n"
+      "   uint value = -5\n"
+      "   return value as int\n"
+      "}\n"
+   );
+
+   EXPECT_EQ(result.exitCode, -5);
+   ASSERT_EQ(result.errors.size(), 3);
+   EXPECT_EQ(result.errors[0].message, "cannot assign int to uint; converting value");
+   EXPECT_EQ(result.errors[1].message, "int value is outside uint range");
+   EXPECT_EQ(result.errors[2].message, "uint value is outside int range");
+}
+
 TEST(InterpreterEnvironmentTests, KeepsBlockScopeLocal) {
    auto result = interpretSource(
       "fun main() -> int {\n"

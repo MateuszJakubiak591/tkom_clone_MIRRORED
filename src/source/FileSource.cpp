@@ -4,7 +4,7 @@
 
 FileSource::FileSource(const std::string& filename)
    : filename_(filename),
-     file_(filename, std::ios::binary) {
+     file_(filename) {
    if (!file_) {
       throw std::runtime_error("Nie można otworzyć pliku: " + filename);
    }

@@ -1,0 +1,118 @@
+DOKUMENTACJA KONCOWA INTERPRETERA DJM
+Stan na 7 czerwca 2026
+
+1. Dokumentacja uzytkownika
+
+Projekt implementuje lekser, parser oraz interpreter jezyka DJM w wariancie bez
+klas. Program uruchamia sie poleceniem:
+
+  Windows: build\Debug\djm.exe src\program.djm
+  Linux:   ./build/djm ./src/program.djm
+
+Budowanie przez CMake:
+
+  cmake -S . -B build
+  cmake --build build
+  ctest --test-dir build --output-on-failure
+
+Wymagany jest C++17. Funkcja startowa musi nazywac sie main i przyjmowac zero
+argumentow albo jeden argument list<string>. Importowane elementy odczytuje sie
+przez nazwe pliku bez rozszerzenia, np. file1.fun1() albo file1.VALUE.
+
+W folderze src znajduja sie programy program_recovery_*.djm. Pokazuja one
+mechanizm odzyskiwania po wybranych bledach wykonania. Interpreter raportuje
+problem, stosuje opisana w komunikacie korekte i kontynuuje program, jezeli
+istnieje jednoznaczne i przewidywalne zachowanie zastepcze.
+
+Dokumentacje API mozna wygenerowac narzedziem Doxygen:
+
+  doxygen Doxyfile
+
+2. Zrealizowana funkcjonalnosc
+
+Zaimplementowano:
+- tokenizacje i parsowanie programu do niezaleznego AST;
+- klasyczny wzorzec Visitor oraz interpreter odwiedzajacy wezly AST;
+- typy void, int64, uint64, float, bool, char, string i list<T>;
+- deklaracje funkcji, stale globalne, zmienne lokalne i mutowalnosc;
+- wywolania funkcji, rekurencje, parametry, return oraz funkcje print/println;
+- zakresy blokowe, konteksty wywolan i wyszukiwanie nazw;
+- if, while, for, break i continue;
+- operatory arytmetyczne, logiczne, porownania i jawne castowanie;
+- operacje listowe, m.in. +, -, *, contains, map, filter, group, count,
+  reverse, flatten, indeksowanie i wycinki;
+- importy funkcji i stalych oraz dostep przez modul.element;
+- diagnostyke bledow z lokalizacja i fragmentem kodu;
+- wybrane strategie odzyskiwania po bledach wykonania;
+- testy jednostkowe leksera, parsera, wartosci runtime, srodowiska i interpretera.
+
+Nie zaimplementowano:
+- klas, obiektow, pol, metod, konstruktorow i dziedziczenia;
+- przeciazania funkcji;
+- pelnej statycznej analizy semantycznej przed wykonaniem;
+- ogolnych przestrzeni nazw; kropka obsluguje obecnie importowane elementy;
+- sprawdzania przepelnienia kazdej operacji arytmetycznej int64/uint64.
+
+3. Najtrudniejsze problemy i popelnione bledy
+
+Najwiecej pracy wymagalo rozdzielenie AST, wartosci runtime i srodowiska.
+Interpreter nie moze operowac na tokenach, a jednoczesnie musi zachowac
+lokalizacje zrodla do diagnostyki. Wzorzec Visitor poczatkowo byl obchodzony
+przez dynamic_cast w Node::accept; rozwiazanie zostalo pozniej zastapione
+klasycznymi metodami accept w konkretnych klasach AST.
+
+Problematyczne okazaly sie konwersje liczb. C++ definiuje zawijanie uint, ale
+przepelnienie signed int jest niezdefiniowane. Dlatego castValue jawnie
+sprawdza zakres i przekazuje zawinieta wartosc razem z RuntimeValueOutOfRange.
+Trzeba bylo tez oddzielic niepoprawny tekst od liczby poza zakresem.
+
+Pierwsze testy leksera i parsera laczyly wiele przypadkow w jednym wejsciu.
+Moglo to ukrywac blad zalezny od poprzedniego tokenu. Testy zostaly uzupelnione
+o niezalezne przypadki pojedynczych konstrukcji.
+
+Mechanizm kontynuowania po bledzie jest wygodny demonstracyjnie, ale niesie
+ryzyko lawiny kolejnych diagnostyk. Korekta jest wykonywana tylko tam, gdzie
+wybrano jednoznaczne zachowanie: pusta lista dla blednego for, pominiecie
+elementu mieszanej listy, zachowanie starej stalej importu albo wynik false dla
+porownania roznych typow. Bledny cast napisu nadal zatrzymuje wykonanie.
+
+Nie przewidziano poczatkowo, ze jedna diagnostyka moze byc drukowana dwa razy:
+na biezaco przez printLastWarning i ponownie na koncu przez printErrors. W
+przyszlosci nalezy rozdzielic kolekcjonowanie diagnostyk od polityki ich
+wyswietlania.
+
+Klasy okazaly sie funkcjonalnoscia przekrojowa, a nie pojedynczym dodatkiem.
+Szczegoly znajduja sie w pliku Problemy_z_implementacja_klas.txt.
+
+4. Jak mozna bylo ograniczyc problemy
+
+Przed implementacja nalezalo spisac tabele zgodnosci typow i semantyke kazdego
+operatora. Pomogloby tez wczesne rozdzielenie bledow fatalnych od naprawialnych,
+zaprojektowanie importow przed zajeciem operatora kropki oraz uruchamianie CI
+na Windows i Linux po kazdej wiekszej zmianie. Testy powinny od poczatku byc
+niezalezne i obejmowac zarowno poprawny wynik, jak i diagnostyke.
+
+5. Metryki i jakosc
+
+Metoda liczenia: wszystkie fizyczne linie plikow .cpp i .hpp.
+
+  Kod produkcyjny, include + src: 5557 linii
+  Kod testowy, tests:             2897 linii
+  Razem:                          8454 linii
+  Liczba przypadkow TEST/TEST_F:   134
+
+Procentowe pokrycie kodu: niezmierzone. Projekt nie ma jeszcze konfiguracji
+gcov/lcov ani OpenCppCoverage, dlatego podanie procentu byloby niewiarygodne.
+Liczba godzin: nie prowadzono wiarygodnej ewidencji; wartosc powinien uzupelnic
+autor na podstawie wlasnych notatek.
+
+Kod uzywa C++17, biblioteki standardowej, CMake i GoogleTest. CMake nie zawiera
+zaleznosci specyficznych dla systemu. Dockerfile buduje projekt na Ubuntu 24.04
+z g++, a projekt zostal sprawdzony lokalnie na Windows z Visual C++. Pelna
+kompilacja Visual C++ oraz 134 z 134 testow zakonczyly sie powodzeniem.
+
+6. Dalszy rozwoj
+
+Najwazniejsze kolejne kroki to CI dla Windows/Linux, pomiar pokrycia, usuniecie
+podwojnego drukowania diagnostyk, kontrola przepelnien arytmetycznych oraz
+osobny projekt semantyki klas i typow nazwanych.

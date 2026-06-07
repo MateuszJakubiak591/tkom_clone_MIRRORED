@@ -1,0 +1,10 @@
+// Demonstracja porownania wartosci roznych typow.
+// Interpreter zglasza problem, przyjmuje wynik false i wykonuje program dalej.
+// Dotyczy to zarowno == i !=, jak i porownan porzadkowych.
+
+fun main() -> int {
+   println(2 == "2")
+   println(2 != "2")
+   println(2 < "2")
+   return 0
+}

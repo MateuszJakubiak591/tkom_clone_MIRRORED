@@ -1,0 +1,15 @@
+// Demonstracja konwersji wykonywanych mimo niezgodnosci typow.
+// Dodatnie int -> uint jest dozwolone bez komunikatu.
+// float -> int jest zglaszane, ale wartosc zostaje skonwertowana.
+// Ujemne int -> uint powoduje dodatkowo RuntimeValueOutOfRange i zawiniecie.
+
+fun main() -> int {
+   uint natural = 5
+   int truncated = 7.8
+   uint wrapped = -1
+
+   println(natural)
+   println(truncated)
+   println(wrapped)
+   return truncated
+}

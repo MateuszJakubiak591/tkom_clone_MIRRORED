@@ -22,9 +22,10 @@ bool isNumeric(const RuntimeType& type) {
           type.kind() == RuntimeType::Kind::Char;
 }
 
-bool isAllowedImplicitConversion(const RuntimeType& valueType, const RuntimeType& targetType) {
-   return valueType.kind() == RuntimeType::Kind::Int &&
-          targetType.kind() == RuntimeType::Kind::Float;
+bool isAllowedImplicitConversion(const Value& value, const RuntimeType& targetType) {
+   return value.type().kind() == RuntimeType::Kind::Int &&
+          targetType.kind() == RuntimeType::Kind::Uint &&
+          std::get<int64_t>(value.data()) >= 0;
 }
 
 int64_t toSignedInteger(const Value& value) {
@@ -56,6 +57,34 @@ Value makeNumericResult(const RuntimeType& type, double floatValue, int64_t intV
    }
 
    return Value::voidValue();
+}
+
+RuntimeType promotedNumericType(const RuntimeType& left, const RuntimeType& right) {
+   // Mixed numeric operations use one deterministic common type before evaluation.
+   if (left == right) {
+      return left;
+   }
+
+   if (left.kind() == RuntimeType::Kind::Float || right.kind() == RuntimeType::Kind::Float) {
+      return RuntimeType::floatType();
+   }
+
+   if ((left.kind() == RuntimeType::Kind::Char && right.kind() == RuntimeType::Kind::Int) ||
+       (left.kind() == RuntimeType::Kind::Int && right.kind() == RuntimeType::Kind::Char)) {
+      return RuntimeType::intType();
+   }
+
+   if ((left.kind() == RuntimeType::Kind::Char && right.kind() == RuntimeType::Kind::Uint) ||
+       (left.kind() == RuntimeType::Kind::Uint && right.kind() == RuntimeType::Kind::Char)) {
+      return RuntimeType::uintType();
+   }
+
+   if ((left.kind() == RuntimeType::Kind::Int && right.kind() == RuntimeType::Kind::Uint) ||
+       (left.kind() == RuntimeType::Kind::Uint && right.kind() == RuntimeType::Kind::Int)) {
+      return RuntimeType::intType();
+   }
+
+   return left;
 }
 
 void requireSameListOperands(
@@ -208,6 +237,7 @@ void Interpreter::visit(const BlockStatement& node) {
 }
 
 void Interpreter::executeBlock(const BlockStatement& block, bool createScope) {
+   // A for-loop passes false because it already created an iteration scope containing its variable.
    if (createScope) {
       environment_.pushScope();
    }
@@ -491,8 +521,35 @@ void Interpreter::visit(const LogicalAndExpression& node) {
    lastValue_ = Value::boolValue(asBool(evaluate(node.right()), node.right().location()));
 }
 
-void Interpreter::visit(const EqualExpression& node) { lastValue_ = Value::boolValue(valuesEqual(evaluate(node.left()), evaluate(node.right()))); }
-void Interpreter::visit(const NotEqualExpression& node) { lastValue_ = Value::boolValue(!valuesEqual(evaluate(node.left()), evaluate(node.right()))); }
+void Interpreter::visit(const EqualExpression& node) {
+   Value left = evaluate(node.left());
+   Value right = evaluate(node.right());
+   if (left.type() != right.type()) {
+      reportRuntimeError(RuntimeError(
+         "cannot compare " + left.type().toString() + " with " + right.type().toString() + "; returning false",
+         node.location()
+      ));
+      lastValue_ = Value::boolValue(false);
+      return;
+   }
+
+   lastValue_ = Value::boolValue(valuesEqual(left, right));
+}
+
+void Interpreter::visit(const NotEqualExpression& node) {
+   Value left = evaluate(node.left());
+   Value right = evaluate(node.right());
+   if (left.type() != right.type()) {
+      reportRuntimeError(RuntimeError(
+         "cannot compare " + left.type().toString() + " with " + right.type().toString() + "; returning false",
+         node.location()
+      ));
+      lastValue_ = Value::boolValue(false);
+      return;
+   }
+
+   lastValue_ = Value::boolValue(!valuesEqual(left, right));
+}
 
 void Interpreter::visit(const ContainsExpression& node) {
    Value left = evaluate(node.left());
@@ -1070,11 +1127,40 @@ Value Interpreter::evaluateBinaryNumeric(const BinaryExpression& node, char oper
    Value left = evaluate(node.left());
    Value right = evaluate(node.right());
 
-   if (left.type() != right.type() || !isNumeric(left.type())) {
-      throw RuntimeError("numeric operator requires operands of the same numeric type", node.location());
+   if (!isNumeric(left.type()) || !isNumeric(right.type())) {
+      throw RuntimeError("numeric operator requires numeric operands", node.location());
    }
 
-   if (left.type().kind() == RuntimeType::Kind::Float) {
+   RuntimeType resultType = promotedNumericType(left.type(), right.type());
+   auto coerceOperand = [&](Value value) {
+      if (value.type() == resultType) {
+         return value;
+      }
+
+      reportRuntimeError(RuntimeError(
+         "cannot use " + value.type().toString() +
+         " as " + resultType.toString() +
+         " in numeric operation; converting value",
+         node.location()
+      ));
+
+      try {
+         return castValue(value, resultType);
+      } catch (const RuntimeValueOutOfRange& error) {
+         // Recovery keeps the wrapped value so the operation can finish deterministically.
+         reportRuntimeError(RuntimeError(error.what(), node.location()));
+         return cloneValue(error.wrappedValue());
+      } catch (const RuntimeValueInvalidStringCast& error) {
+         throw RuntimeError(error.what(), node.location());
+      } catch (const std::runtime_error&) {
+         throw RuntimeError("numeric operator cannot convert operand to " + resultType.toString(), node.location());
+      }
+   };
+
+   left = coerceOperand(std::move(left));
+   right = coerceOperand(std::move(right));
+
+   if (resultType.kind() == RuntimeType::Kind::Float) {
       double l = toDouble(left);
       double r = toDouble(right);
       switch (operation) {
@@ -1103,7 +1189,7 @@ Value Interpreter::evaluateBinaryNumeric(const BinaryExpression& node, char oper
       case '^': result = static_cast<int64_t>(std::pow(static_cast<double>(l), static_cast<double>(r))); break;
    }
 
-   return makeNumericResult(left.type(), static_cast<double>(result), result);
+   return makeNumericResult(resultType, static_cast<double>(result), result);
 }
 
 Value Interpreter::evaluateComparison(const BinaryExpression& node, const std::string& operation) {
@@ -1114,7 +1200,8 @@ Value Interpreter::evaluateComparison(const BinaryExpression& node, const std::s
    try {
       comparison = compareValues(left, right);
    } catch (const std::runtime_error& error) {
-      throw RuntimeError(error.what(), node.location());
+      reportRuntimeError(RuntimeError(std::string(error.what()) + "; returning false", node.location()));
+      return Value::boolValue(false);
    }
 
    if (operation == "<") return Value::boolValue(comparison < 0);
@@ -1139,7 +1226,7 @@ Value Interpreter::coerceForParameter(
       return Value::listValue(targetType.elementType(), {});
    }
 
-   if (!isAllowedImplicitConversion(value.type(), targetType)) {
+   if (!isAllowedImplicitConversion(value, targetType)) {
       reportRuntimeError(RuntimeError(
          "cannot pass " + value.type().toString() +
          " to parameter '" + parameterName +
@@ -1184,7 +1271,7 @@ Value Interpreter::coerceForAssignment(Value value, const RuntimeType& targetTyp
       return Value::listValue(targetType.elementType(), {});
    }
 
-   if (!isAllowedImplicitConversion(value.type(), targetType)) {
+   if (!isAllowedImplicitConversion(value, targetType)) {
       reportRuntimeError(RuntimeError(
          "cannot assign " + value.type().toString() + " to " +
          targetType.toString() + "; converting value",

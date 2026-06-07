@@ -1,0 +1,20 @@
+// Demonstracja dwoch napraw petli for.
+// Pierwsza petla dostaje int zamiast listy, wiec interpreter zglasza problem
+// i traktuje jej wejscie jak pusta list<int>.
+// Druga petla deklaruje element jako string, ale iteruje po list<int>.
+// Interpreter koryguje typ zmiennej item na int i wykonuje trzy iteracje.
+
+fun main() -> int {
+   mut int total = 0
+
+   for int item in 42 {
+      total = total + item
+   }
+
+   for string item in [1, 2, 3] {
+      total = total + item
+   }
+
+   println(total)
+   return total
+}

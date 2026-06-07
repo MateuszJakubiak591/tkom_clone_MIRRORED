@@ -1,0 +1,57 @@
+PROBLEMY Z IMPLEMENTACJA KLAS W JEZYKU DJM
+
+Projekt zostal zrealizowany w wariancie jezyka bez klas. Klasy nie sa jedynie
+nowym rodzajem deklaracji. Ich dodanie zmieniloby prawie kazda warstwe
+implementacji: gramatyke, parser, AST, system typow, srodowisko wykonawcze,
+semantyke kropki, wywolania funkcji oraz zarzadzanie czasem zycia wartosci.
+
+1. Parser i AST
+
+Parser musialby rozpoznawac deklaracje klas, pola, metody, konstruktory,
+modyfikatory dostepu i tworzenie obiektow. AST potrzebowaloby nowych wezlow,
+np. ClassDeclaration, MethodDeclaration, FieldDeclaration, NewExpression oraz
+pelnej semantyki MemberAccessExpression. Kazdy nowy wezel wymagalby tez metody
+accept i odpowiedniej metody w Visitorze.
+
+2. System typow
+
+Obecny RuntimeType opisuje zamkniety zbior typow prostych i list. Dla klas
+musialby przechowywac tozsamosc klasy, a nie tylko Kind. Nalezaloby okreslic
+zasady zgodnosci typow, dziedziczenia, wartosci null, kopiowania obiektow oraz
+porownywania instancji.
+
+3. Reprezentacja obiektu w czasie wykonania
+
+Value przechowuje obecnie wartosci w std::variant. Obiekt klasy wymagalby
+referencji do definicji klasy i osobnego magazynu pol. Trzeba byloby ustalic,
+czy przypisanie obiektu kopiuje cala instancje, czy tylko referencje. Bez tej
+decyzji latwo uzyskac niespojna mutowalnosc albo wiszace referencje.
+
+4. Metody, this i zakresy
+
+Interpreter ma currentThis_ uzywane przez operatory listowe. Klasy wymagalyby
+oddzielenia tego znaczenia od this obiektu. Wywolanie metody musialoby tworzyc
+kontekst zawierajacy parametry, lokalne zakresy oraz odbiorce metody. Nalezaloby
+tez rozwiazac konflikt nazw pola, parametru, zmiennej lokalnej i globalnej.
+
+5. Operator kropki
+
+W aktualnym wariancie kropka jest zarezerwowana dla importow:
+modul.funkcja() albo modul.STALA. Dla klas ten sam MemberAccessExpression
+musialby rozroznic modul, obiekt i ewentualnie statyczny element klasy.
+Wymagaloby to dodatkowej informacji semantycznej albo bardziej rozbudowanego
+rozstrzygania nazw w interpreterze.
+
+6. Zakres projektu i ryzyko
+
+Najwiekszym problemem nie byla pojedyncza funkcja, lecz liczba powiazanych
+decyzji. Dodanie niepelnych klas mogloby zepsuc dzialajace importy, typowanie i
+zakresy. Bezpieczniejszym wyborem bylo doprowadzenie wariantu bez klas do
+spojnego stanu oraz pozostawienie klas jako osobnego etapu rozwoju.
+
+Jak mozna bylo sie ustrzec problemow:
+- ustalic semantyke klas przed rozpoczeciem implementacji parsera;
+- oddzielic this operatorow listowych od this metod;
+- zaprojektowac RuntimeType tak, aby obslugiwal typy nazwane;
+- przygotowac testy akceptacyjne dla pol, metod, konstruktorow i kropki;
+- wdrazac klasy pionowymi etapami: AST, typ, instancja, pole, metoda.
