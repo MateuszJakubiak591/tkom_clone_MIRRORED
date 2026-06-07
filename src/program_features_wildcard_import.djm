@@ -1,0 +1,18 @@
+// Przyklad importu wildcard. Wszystkie eksportowalne funkcje i stale biblioteki
+// sa dostepne przez przestrzen nazw program_features_number_library.
+// Zaimportowany plik nie potrzebuje funkcji main i nie uruchamia sie sam.
+
+import * from "program_features_number_library.djm"
+
+fun main() -> int {
+   int fib = program_features_number_library.fibonacci(8)
+   int fact = program_features_number_library.factorial(5)
+   int squared = program_features_number_library.square(6)
+
+   println(program_features_number_library.DEFAULT_LIMIT)
+   println(fib)
+   println(fact)
+   println(squared)
+
+   return fib
+}

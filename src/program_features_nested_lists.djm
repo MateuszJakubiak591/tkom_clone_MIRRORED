@@ -1,0 +1,27 @@
+// Przyklad pracy z listami zagniezdzonymi.
+// Pokazuje indeksowanie lancuchowe, flatten, reverse, wycinki, petle for,
+// konkatenacje list oraz sprawdzenie contains.
+
+import sum from "program_features_number_library.djm"
+
+fun main() -> int {
+   list<list<int>> matrix = [[1, 2, 3], [4, 5], [6, 7, 8]]
+   int center = matrix[1][1]
+   list<int> flat = flatten matrix
+   list<int> reversed = reverse flat
+   list<int> window = reversed[2:6]
+
+   mut list<int> collected = []
+   for list<int> row in matrix {
+      collected = collected + row
+   }
+
+   println(center)
+   println(flat)
+   println(reversed)
+   println(window)
+   println(collected == flat)
+   println(flat contains [2, 7])
+
+   return program_features_number_library.sum(window)
+}

@@ -1,0 +1,213 @@
+FUNKCJONALNOSC WZGLEDEM DOKUMENTACJI WSTEPNEJ
+Porownanie z plikiem "TKOM 2026L Mateusz Jakubiak - BEZ KLAS.pdf"
+Stan na 7 czerwca 2026
+
+1. Zakres porownania
+
+Dokument PDF jest dokumentacja wstepna. Opisuje docelowa semantyke jezyka,
+natomiast czesc decyzji zostala zmieniona podczas implementacji. Najwazniejsza
+zmiana zakresu wynika juz z nazwy pliku: projekt zostal wykonany w wariancie
+bez klas. Ponizej oddzielono funkcje zrealizowane, czesciowo zrealizowane oraz
+niezrealizowane albo zmienione wzgledem pierwotnych zalozen.
+
+2. Funkcjonalnosci zrealizowane
+
+Lekser i parser:
+- rozpoznawane sa typy int, uint, float, bool, char, string i list<T>;
+- obslugiwane sa literaly, identyfikatory, komentarze oraz lokalizacje tokenow;
+- parser buduje niezalezne AST dla deklaracji, instrukcji i wyrazen;
+- zaimplementowano priorytety operatorow oraz wyrazenia postfixowe;
+- importy musza znajdowac sie przed deklaracjami programu;
+- bledy leksera i parsera zawieraja plik, linie, kolumne i fragment zrodla.
+
+Interpreter i Visitor:
+- Interpreter realizuje klasyczny wzorzec Visitor. Kazdy konkretny wezel AST
+  posiada accept, a Interpreter implementuje odpowiadajaca mu metode visit;
+- program rejestruje funkcje, oblicza stale globalne i uruchamia funkcje main;
+- funkcje maja parametry, typ zwracany, return oraz rekurencje;
+- argumenty i wartosci list sa kopiowane przez wartosc;
+- dostepne sa wbudowane funkcje print i println.
+
+Zakresy i sterowanie:
+- zmienne sa domyslnie niemutowalne, a mut pozwala na przypisanie;
+- dzialaja zakresy blokowe, przeslanianie nazw oraz osobne konteksty wywolan;
+- zaimplementowano if/else, while, for, break i continue;
+- funkcja main moze przyjac list<string> argumentow programu.
+
+Typy i konwersje:
+- RuntimeType i Value pilnuja spojnosci typu z zawartoscia std::variant;
+- dostepne sa wartosci domyslne wszystkich typow;
+- castValue obsluguje konwersje typow prostych i list element po elemencie;
+- konwersje poza zakresem zwracaja deterministycznie zawinieta wartosc i
+  zglaszaja RuntimeValueOutOfRange;
+- niepoprawna tekstowa reprezentacja liczby zglasza osobny blad;
+- listy sa homogeniczne i moga byc zagniezdzone.
+
+Operatory:
+- dzialaja operatory arytmetyczne, logiczne, potegowanie i porownania;
+- dziala konkatenacja list +, odejmowanie list -, przeciecie list *;
+- zaimplementowano indeksowanie oraz wycinki [start:end];
+- dzialaja operatory listowe group %, filter ?, map |>, count, reverse,
+  flatten i contains;
+- operatory group/filter/map udostepniaja przetwarzany element jako this.
+
+Importy:
+- dzialaja importy selektywne i import *;
+- import tworzy przestrzen nazw rowna nazwie pliku bez rozszerzenia;
+- funkcje i stale odczytuje sie przez modul.element oraz modul.funkcja();
+- sciezki wzgledne sa rozwiazywane wzgledem katalogu glownego programu;
+- interpreter wykrywa importy cykliczne i konflikt nazw modulow;
+- zaimportowany modul jest cache'owany wewnatrz jednej instancji interpretera.
+
+3. Funkcjonalnosci czesciowo zrealizowane lub zmienione
+
+Statyczne i silne typowanie:
+
+PDF przewiduje osobny analizator semantyczny wykonujacy kontrole przed
+uruchomieniem programu. Obecna implementacja nie ma osobnego przejscia
+semantycznego. Environment pelni role runtime'owej tablicy symboli, a wiele
+kontroli typow odbywa sie podczas wykonywania wezlow AST. Oznacza to, ze blad
+w nieosiagalnej galezi programu moze nie zostac wykryty.
+
+PDF pozwala kontekstowo dopasowac dodatni literal calkowity do int, uint lub
+float, ale zabrania takiej konwersji dla zwyklej zmiennej int. Runtime Value
+nie pamieta juz, czy liczba pochodzila z literalu, czy ze zmiennej. Obecnie
+bez komunikatu dopuszczane jest bezpieczne int -> uint dla wartosci
+nieujemnych. Pozostale niezgodnosci sa raportowane i interpreter probuje
+dokonac konwersji.
+
+Zakres liczb:
+
+PDF opisuje int i uint jako typy 32-bitowe. Implementacja zostala swiadomie
+zmieniona na int64_t i uint64_t. Zwieksza to zakres, ale sprawia, ze przyklady
+graniczne i zawijanie roznia sie od dokumentacji wstepnej.
+
+Operatory arytmetyczne:
+
+PDF zaklada silne typowanie operandow, z wyjatkiem kontekstowego dopasowania
+literalu. Aktualny interpreter promuje mieszane pary liczbowe do wspolnego typu
+i raportuje konwersje. Nie sa jeszcze sprawdzane wszystkie przepelnienia
+powstajace podczas +, -, *, / i ^. Jest to istotne szczegolnie dla signed
+int64, gdzie przepelnienie w C++ ma niezdefiniowane zachowanie.
+
+Typ char:
+
+Char jest traktowany jako typ liczbowy i mozna go konwertowac, ale C++ char
+moze byc signed albo unsigned zaleznie od kompilatora. Kod normalizuje wiele
+operacji przez unsigned char, jednak pelna semantyka 0-255 i raportowanie
+kazdego przepelnienia wymagaja dalszego dopracowania.
+
+Typ string:
+
+PDF opisuje string jako semantyczny list<char>. Implementacja przechowuje go
+osobno jako std::string. Indeksowanie, wycinanie, count i reverse dzialaja, ale
+nie wszystkie operacje list<char> sa automatycznie dostepne dla string.
+Konwersje tekstu na liczby wymagaja cyfr, opcjonalnego minusa i dla float jednej
+kropki. W przeciwienstwie do starszego opisu PDF podkreslniki w stringu nie sa
+akceptowane.
+
+Listy i count:
+
+Semantyka glownych operatorow listowych odpowiada dokumentacji. Count zwraca
+jednak obecnie int, podczas gdy PDF opisuje wynik jako uint. Porownanie list
+roznej dlugosci daje wynik leksykograficzny; nie jest wypisywane osobne
+ostrzezenie dla samej roznicy dlugosci.
+
+Bledy:
+
+PDF rozroznia etap bledow semantycznych i runtime. Bez osobnego analizatora
+semantycznego wiekszosc niezgodnosci typow jest obecnie raportowana jako
+Runtime. Dla wybranych bledow interpreter stosuje korekte i kontynuuje, np.
+pomija element mieszanej listy, przyjmuje pusta liste w blednym for albo
+zwraca false dla porownania roznych typow.
+
+4. Funkcjonalnosci niezrealizowane
+
+- osobny analizator semantyczny przechodzacy cale AST przed interpretacja;
+- osobna statyczna tablica symboli zawierajaca sygnatury i typy wyrazen;
+- przeciazanie funkcji;
+- klasy, obiekty, pola, metody, konstruktory, dziedziczenie i metody compare;
+- pelna kontrola przepelnien wszystkich operatorow arytmetycznych;
+- ostrzeganie o utracie precyzji literalow float;
+- rozroznienie IntegerLiteral od runtime'owej wartosci int po ewaluacji;
+- automatyczne traktowanie string jako pelnego list<char>;
+- narzedzie do pomiaru pokrycia kodu oraz automatyczne CI Windows/Linux.
+
+5. Co sprawilo najwiecej trudnosci
+
+Importowanie plikow:
+
+Import nie jest tylko odczytaniem tekstu. Kazdy plik trzeba odnalezc wzgledem
+ustalonego katalogu, otworzyc, poddac leksowaniu i parsowaniu, zbudowac modul,
+zarejestrowac funkcje, obliczyc stale globalne i kontrolowac eksportowane nazwy.
+Podczas wywolania importowanej funkcji interpreter musi tez ustawic aktywny
+modul, aby funkcja widziala wlasne stale i funkcje pomocnicze.
+
+Najtrudniejszy problem wydajnosciowy polega na unikaniu wielokrotnej pracy.
+Bez cache'a ten sam plik importowany przez kilka modulow bylby wielokrotnie
+czytany, tokenizowany, parsowany i inicjalizowany. Obecne importedModules_
+cache'uje modul w ramach jednej instancji Interpreter, ale nadal istnieja pola
+do poprawy:
+- parser i AST modulu sa przechowywane w pamieci do konca interpretacji;
+- stale globalne sa obliczane eager, nawet gdy nigdy nie zostana uzyte;
+- nie ma oddzielnego cache'a skompilowanych modulow pomiedzy uruchomieniami;
+- nazwa modulu opiera sie na nazwie pliku, wiec dwa rozne pliki o tej samej
+  nazwie prowadza do konfliktu;
+- import cykliczny trzeba wykryc przed zakonczeniem budowania modulu;
+- zmiana importowanego pliku wymagalaby uniewaznienia cache'a.
+
+Wydajniejsze rozwiazanie mogloby miec osobny ModuleLoader. Przechowywalby on
+kanoniczna sciezke, stan modulu (loading/ready/failed), gotowe AST, indeks
+eksportow oraz jednorazowo zainicjalizowane stale. Dla bardzo duzych projektow
+warto byloby dodac cache na dysku lub etap kompilacji do prostszego IR.
+
+Wartosci i konwersje:
+
+Trudne bylo zagwarantowanie, ze RuntimeType zawsze odpowiada aktywnemu
+elementowi std::variant. Rozwiazano to przez prywatny konstruktor Value i
+fabryki nazwane. Osobnym problemem bylo zawijanie: uint ma w C++ zdefiniowane
+modulo, ale przepelnienie signed int jest niezdefiniowane. Dlatego konwersje
+musza sprawdzac zakres przed wykonaniem niebezpiecznej operacji.
+
+Visitor i sterowanie:
+
+Interpreter musi zwracac wynik z wyrazenia, a metody Visitor maja typ void.
+Wynik przechowywany jest w lastValue_. Return, break i continue musza przerwac
+zagniezdzone wizyty, dlatego zostaly zaimplementowane jako wewnetrzne sygnaly
+wyjatkowe. W Visual C++ wymagalo to jawnego wlaczenia /EHsc.
+
+Zakresy:
+
+Trzeba bylo odroznic globalny zakres, zakresy blokowe i stos kontekstow wywolan
+funkcji. Szczegolnie latwo bylo utworzyc o jeden zakres za duzo w petli for,
+przez co zmienna iteracyjna nie bylaby widoczna w ciele.
+
+6. Problemow, ktorych poczatkowo nie przewidziano
+
+- Rozne zakonczenia linii LF i CRLF przesuwaly kolumny tokenow na Windowsie.
+- Jedna diagnostyka jest obecnie drukowana na biezaco i ponownie na koncu.
+- Runtime Value nie zachowuje informacji, czy int byl literalem.
+- Kropka potrzebna dla importow ogranicza przyszle dodanie klas i obiektow.
+- Recovery po bledzie moze generowac kolejne, wtorne komunikaty.
+- Test zawierajacy wiele tokenow moze przejsc mimo bledu zaleznego od
+  poprzedniego tokenu.
+
+7. Jak mozna bylo sie ustrzec problemow
+
+- przed kodowaniem spisac kompletna tabele operatorow, typow i promocji;
+- zaprojektowac osobny analizator semantyczny przed Interpreterem;
+- od poczatku rozdzielic ModuleLoader, Environment i Interpreter;
+- od poczatku testowac ten sam kod na Windows oraz Linux;
+- uzywac kanonicznych sciezek jako kluczy cache'a importow;
+- rozdzielic raportowanie bledu od decyzji: zatrzymaj, napraw lub kontynuuj;
+- dodac testy graniczne dla wszystkich konwersji i przepelnien;
+- dodac CI oraz automatyczny pomiar pokrycia kodu.
+
+8. Ocena koncowa
+
+Najwazniejszy zakres wariantu bez klas zostal zrealizowany: lekser, parser,
+AST, Visitor, funkcje, zakresy, sterowanie, typy runtime, listy, importy i
+diagnostyka dzialaja razem jako kompletny interpreter. Najwieksza roznica
+architektoniczna wzgledem PDF to brak osobnego analizatora semantycznego.
+Najwiekszy dlug techniczny to pelna kontrola przepelnien oraz bardziej
+wydajny, niezalezny ModuleLoader dla importow.

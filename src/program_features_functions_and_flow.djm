@@ -1,0 +1,33 @@
+// Przyklad funkcji, rekurencji i sterowania przeplywem.
+// Korzysta ze wspolnej biblioteki, buduje liste wartosci Fibonacci, pomija
+// wybrany element przez continue, konczy petle przez break i sumuje wynik.
+
+import fibonacci, factorial, sum from "program_features_number_library.djm"
+
+fun main() -> int {
+   mut list<int> sequence = []
+   mut int index = 0
+
+   while index < 10 {
+      index = index + 1
+
+      if index == 3 {
+         continue
+      }
+
+      if index > 7 {
+         break
+      }
+
+      sequence = sequence + [program_features_number_library.fibonacci(index)]
+   }
+
+   int factorialFive = program_features_number_library.factorial(5)
+   int sequenceSum = program_features_number_library.sum(sequence)
+
+   println(sequence)
+   println(factorialFive)
+   println(sequenceSum)
+
+   return sequenceSum
+}

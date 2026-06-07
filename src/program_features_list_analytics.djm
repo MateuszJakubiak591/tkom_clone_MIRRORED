@@ -1,0 +1,34 @@
+// Rozbudowany przyklad analizy list.
+// Program:
+// 1. filtruje liczby wieksze od 3,
+// 2. mapuje je na kwadraty przez funkcje z importowanej biblioteki,
+// 3. grupuje liczby wedlug wyniku porownania this > 4,
+// 4. pokazuje konkatenacje, odejmowanie, przeciecie, contains i wycinek,
+// 5. wykonuje jawny cast wszystkich elementow list<float> na list<int>,
+// 6. sumuje kwadraty przez importowana funkcje.
+
+import square, sum, DEFAULT_LIMIT from "program_features_number_library.djm"
+
+fun main() -> int {
+   list<int> values = [1, 2, 3, 4, 5, 6, 7, 8]
+   list<int> selected = values ? (this > 3)
+   list<int> squares = selected |> program_features_number_library.square(this)
+   list<list<int>> groups = values % (this > 4)
+
+   list<int> extended = values + [8, 9, 10]
+   list<int> removed = extended - [2, 8, 100]
+   list<int> common = removed * [1, 4, 4, 8, 9]
+   list<int> middle = squares[1:3]
+   list<int> converted = [1.2, 2.8, 3.9] as list<int>
+
+   println(selected)
+   println(squares)
+   println(groups)
+   println(common)
+   println(middle)
+   println(converted)
+   println(values contains [2, 6])
+   println(program_features_number_library.DEFAULT_LIMIT)
+
+   return program_features_number_library.sum(squares)
+}

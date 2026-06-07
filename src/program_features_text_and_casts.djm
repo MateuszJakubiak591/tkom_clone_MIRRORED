@@ -1,0 +1,26 @@
+// Przyklad argumentow main, operacji na string oraz jawnych konwersji.
+// Pierwszy argument powinien byc liczba zapisana jako tekst. Program pokazuje
+// count, reverse, indeksowanie, wycinek i konwersje string -> int -> float.
+// Uruchomienie: djm program_features_text_and_casts.djm 12345
+
+fun main(args: list<string>) -> int {
+   if count args == 0 {
+      println("podaj liczbe jako argument")
+      return 0
+   }
+
+   string text = args[0]
+   string reversed = reverse text
+   string prefix = text[:2]
+   char first = text[0]
+   int number = text as int
+   float floating = number as float
+
+   println(text)
+   println(reversed)
+   println(prefix)
+   println(first)
+   println(floating)
+
+   return number
+}
